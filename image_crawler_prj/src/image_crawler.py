@@ -52,6 +52,7 @@ url ="https://www.ynet.co.il/articles/0,7340,L-5063952,00.html"
 #url = "https://www.nytimes.com/2017/12/29/opinion/dont-cheer-as-the-irs-grows-weaker.html"
 #insert_dynamic_pages_url(url)
 
+# http://www.cortical.io/extract-keywords.html
 
 import extractor
 

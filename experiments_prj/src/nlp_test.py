@@ -23,6 +23,7 @@ if __name__ == '__main__':
 
 # https://github.com/ethangardner/py-keyword-extraction/blob/master/pykw.py
 # http://www.cortical.io/extract-keywords.html - api and free manual tool for keyword extract
+# https://www.textrazor.com/docs/python - api, 500 per day free
 
 
 def extract_web_page_utext(url):  
