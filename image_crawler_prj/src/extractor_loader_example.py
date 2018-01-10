@@ -30,7 +30,11 @@ url_list = [
             #'http://www.walla.co.il',
             #'https://www.themarker.com/'
             #'https://www.google.co.il/search?client=ubuntu&channel=fs&q=google+images+bitcoin&ie=utf-8&oe=utf-8&gfe_rd=cr&dcr=0&ei=I8cwWrHFDq7L8gfw4r-ABg'
-            'http://www.ynet.co.il//articles/0,7340,L-5057011,00.html'
+            #'http://www.ynet.co.il//articles/0,7340,L-5057011,00.html'
+            #"https://www.ynet.co.il/home/0,7340,L-544,00.html", # ynet category tech
+             #"https://www.ynet.co.il/articles/0,7340,L-5063952,00.html", # ynet article trump - iran
+             #"https://www.nytimes.com/", # nyt home page
+             "https://www.nytimes.com/2017/12/29/opinion/dont-cheer-as-the-irs-grows-weaker.html" # nyc article irs
             ]
 
 ### Extract images from URL

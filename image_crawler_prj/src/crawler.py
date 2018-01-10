@@ -50,6 +50,7 @@ class Crawler(object):
         url_info_db = self.coll_urls.find_one({"_id": url_info._id})
         if url_info_db is None:
             task_queue.tasks.extract_load_crawl.delay(common.to_dict(url_info))
+            #task_queue.tasks.extract_load_crawl(common.to_dict(url_info))
         
     def insert_urls(self, url_info_arr):
         '''
@@ -104,7 +105,12 @@ class Crawler(object):
                 traceback.print_exc()
                 return None
             
-            
+    def update_url_extract_info(self, url_info):
+        
+        if not url_info.extract_info or type(url_info.extract_info) is not dict or not bool(url_info.extract_info):
+            return
+        
+        self.coll_urls.update({"_id": url_info._id}, { "$set": { "extract_info" : url_info.extract_info  } })
             
             
             

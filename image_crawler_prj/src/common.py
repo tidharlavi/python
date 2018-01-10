@@ -191,9 +191,11 @@ def link_extractor_html(url_info, html_source):
     external_links = dict()
     for link in links:
         try:
-            href = link.get('href').encode('utf-8')
+            href = link.get('href')
             if (href is None) or (href in ["None",  ""] or href.startswith("javascript:") or href.startswith("#")):
                 continue 
+            
+            href = href.encode('utf-8')
     
             link_domain = UrlParser(href).GetStripDomain()
             

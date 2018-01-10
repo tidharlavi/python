@@ -10,6 +10,7 @@ import urllib # url parsing
 import urllib2 # Download images
 #import json # pretty dump
 import re # string parsing: extract url from style
+import uuid
 
 from bs4 import BeautifulSoup # handle html parsing and printing
 from bs4.element import Comment
@@ -29,6 +30,8 @@ import requests
 # Local lib
 import common
 from object_model import image_details
+from object_model import url_info
+import extract_keywords
 
 class extractor(object):
     '''
@@ -52,6 +55,7 @@ class extractor(object):
         self.url_info = url_info
         
         url = url_info.url
+        self.url = url_info.url
         
         # Create relevant folders
         domain = common.UrlParser(url).GetStripDomain()
@@ -115,6 +119,12 @@ class extractor(object):
         print "extract_info(): self.download_images()"
         self.download_images(img_dtl_arr)
         
+        # extract information from web page: tags, keywords, title
+        print "extract_info(): self.extract_info_from_html_tag()"
+        self.extract_web_page_info()
+        for img_dtl in img_dtl_arr:
+            img_dtl.web_page_info = self.url_info.extract_info.copy()
+        
         # Extract all links
         print "extract_info(): common.link_extractor()"
         self.internal_links, self.external_links = common.link_extractor(url_info, self.html_source, self.url_time_folder)
@@ -125,9 +135,7 @@ class extractor(object):
         print "extract_info(): self.extract_info_from_html_tag()"
         self.extract_info_from_html_tag()
         
-        # extract information from webpage: tags, keywords, title
-        print "extract_info(): self.extract_info_from_html_tag()"
-        self.extract_web_page_info(url_info)
+        
 
         self.stats.TimeEnd("_TotalTime")    
       
@@ -205,7 +213,11 @@ class extractor(object):
     
                 img_dtl.src = img.get_attribute('src')
                 img_dtl.alt = img.get_attribute('alt')
+                if img_dtl.alt:
+                    self.stats.Incr("image_have_alt")
                 img_dtl.title = img.get_attribute('title')
+                if img_dtl.title:
+                    self.stats.Incr("image_have_title")
                 
                 img_dtl.extract_method = image_details.extract_method.img_tag
                 
@@ -298,6 +310,7 @@ class extractor(object):
         
         img_dtl.path = str(fileName)
         #print("Download: src '"+src+"' to fileName '"+fileName+"'.")
+        img_dtl.id = "image_" + str(uuid.uuid4())
 
         try:
             with Image.open(fileName) as im:
@@ -350,7 +363,6 @@ class extractor(object):
             print("Global Exception: type '"+str(exc_traceback)+"', value '"+str(value)+"'")
             traceback.print_exc()
             return None
-
         return fileName
 
     def download_image_embeeded(self, src, destFolder):
@@ -447,6 +459,8 @@ class extractor(object):
             
         soup = BeautifulSoup(self.html_source, 'html.parser')
         
+        self.image_links = []
+        
         for img_dtl in img_dtl_arr:
             try:
                 if "taboola" in img_dtl.src:
@@ -475,7 +489,26 @@ class extractor(object):
                     
                     if img_soup_p.name == 'a' and not hasattr(img_dtl, 'link'):
                         img_dtl.link = img_soup_p.get("href")
-                        self.stats.Incr("found_link_in_"+str(i))
+                        self.stats.Incr("found_link_in_" + str(i))
+                        
+                        href = img_soup_p.get('href')
+                        if (href is None) or (href in ["None",  ""] or href.startswith("javascript:") or href.startswith("#")):
+                            continue 
+                        
+                        href = href.encode('utf-8')
+                
+                        url_info_new = url_info.UrlInfo({
+                                                           "parent_url": self.url,
+                                                           "url": href,
+                                                           "type": url_info.url_info_type.unknown,
+                                                           "initiator_type": url_info.url_info_initiator_type.image,
+                                                           "initiator_id": img_dtl.id,
+                                                           "depth": 0,
+                                                           "depth_max": 1,
+                                                           "uuid": [ "url" + str(uuid.uuid4()) ],
+                                                           })
+                        
+                        self.image_links.append(url_info_new)
                         
                         if "doubleclick" in img_dtl.link:
                             img_dtl.adv = image_details.advertisers.doubleclick
@@ -494,54 +527,21 @@ class extractor(object):
                 traceback.print_exc()
                 continue
 
-    def extract_web_page_info(self, url_info = None):  
-
-        html_source = None
-        if hasattr(self, 'html_source'):
-            html_source = self.html_source        
-        if url_info != None and hasattr(url_info, "url"):
-            url = url_info.url
-            res = requests.get(url)
-            #html_source = res.text
-            
-            content_type = res.headers['Content-Type'] # figure out what you just fetched
-            ctype, charset = content_type.split(';')
-            encoding = charset[len(' charset='):] # get the encoding
-            #print encoding # ie ISO-8859-1
-            utext = res.content.decode(encoding) # now you have unicode
-            html_source = utext.encode('utf8', 'ignore')
-            
-        if html_source == None:
-            return
+    def extract_web_page_info(self):
         
-        soup = BeautifulSoup(html_source, 'html.parser')
-    
-        meta_tags = soup.findAll("meta", attrs={"name":"keywords"})
-        if len(meta_tags) == 1:
-            for meta_tag in meta_tags:
-                if "content" in meta_tag.attrs:
-                    #print("meta name 'keywords' = " + meta_tag["content"])
-                    url_info.metatag_keywords = meta_tag["content"]
-                    self.stats.Incr("found_metatag_keywords")
-            
-        meta_tags = soup.findAll("meta", attrs={"name":"description"})
-        if len(meta_tags) == 1:
-            for meta_tag in meta_tags:
-                if "content" in meta_tag.attrs:
-                    #print("meta name 'description' = " + meta_tag["content"])
-                    url_info.metatag_desription = meta_tag["content"]
-                    self.stats.Incr("found_metatag_desription")
-             
-        title = soup.title.string
-        if title:
-            url_info.page_title = title
-            self.stats.Incr("found_page_title") 
-            
-        self.url_info = url_info
+        ext_keywords = extract_keywords.ExtractKeywords({})
+        ext_keywords.extract_keywords(html_decoded_text = self.html_source)
+        
+        self.url_info.extract_info = dict()
+        self.url_info.extract_info["page_title"] = ext_keywords.page_title.encode('ascii', 'ignore')
+        self.url_info.extract_info["metatag_keywords"] = ext_keywords.page_meta_keywords.encode('ascii', 'ignore')
+        self.url_info.extract_info["metatag_desription"] = ext_keywords.page_meta_desription.encode('ascii', 'ignore')
+        self.url_info.extract_info["page_keywords"] = list(ext_keywords.keywords)
         
     #                
     # Utilities
     #          
+    
     def tag_visible(self, element):
         if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
             return False

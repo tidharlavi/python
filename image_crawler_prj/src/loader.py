@@ -66,6 +66,7 @@ class Loader(object):
                 # image already in DB lets add image detail/s
                 self.stats.Incr("exist_image")
                 
+                # Check if we alreay got this image from this url
                 found_details = False
                 for img_dtl_db in found_rec["metadata"]["details"]:
                     if img_dtl_db["page_src_url"] == img_dtl.page_src_url:
@@ -75,7 +76,8 @@ class Loader(object):
                         break
                 
                 if not found_details:
-                    found_rec["details"].append(common.to_dict(img_dtl))
+                    found_rec["metadata"]["details"].append(common.to_dict(img_dtl))
+                    found_rec["metadata"]["web_page_info"].append(img_dtl.web_page_info)
                 
                 rec_id=found_rec["id"]
                 index='images'
@@ -86,32 +88,33 @@ class Loader(object):
             else:
                 self.stats.Incr("new_image")
                 
+                filename_move = self.dest_folder + img_dtl.id + "." + img_dtl.extension
+                
                 metadata = dict()
                 img_dtl.cnt = 1
+                img_dtl.path_sig_db = filename_move
                 metadata["details"] = [ common.to_dict(img_dtl) ] 
-                self.ses.add_image(img_dtl.path, None, False, metadata)
+                metadata["web_page_info"] = [ img_dtl.web_page_info ]
+                self.ses.add_image(img_dtl.path, None, False, metadata, False, img_dtl.id)
                 
                 # WA to get doc id
-                res = self.ses.search_image(img_dtl.path, True)
-                found_rec = None
-                for rec in res:
-                    #print(rec["dist"])
-                    if rec["dist"] == 0.0:
-                        found_rec = rec
-                        break
-                    
-                if found_rec is None:
-                    self.stats.Incr("error_image_added_not_found")
-                    return
-                
-                filename_move = self.dest_folder + found_rec["id"] + "." + img_dtl.extension
-                img_dtl.path_sig_db = filename_move
+#                 res = self.ses.search_image(img_dtl.path, True)
+#                 found_rec = None
+#                 for rec in res:
+#                     #print(rec["dist"])
+#                     if rec["dist"] == 0.0:
+#                         found_rec = rec
+#                         break
+#                     
+#                 if found_rec is None:
+#                     self.stats.Incr("error_image_added_not_found")
+#                     return
                 
                 # move (currently copy) file from his folder
-                
                 if not os.path.exists(filename_move):
                     #os.rename(img_dtl.path , filename_move)
                     copyfile(img_dtl.path , filename_move)
+                    
         except Exception as e: 
             print("Exception in to load  '"+img_dtl.path+"' to DB.")
             print("Exception: type '",sys.exc_info()[0],"', message '",e,"'")
