@@ -4,6 +4,7 @@ Created on Dec 31, 2017
 @author: eliad
 '''
 import sys
+import os
 
 from bs4 import BeautifulSoup # handle html parsing and printing
 
@@ -16,6 +17,7 @@ import pprint
 
 from rake_nltk import Rake
 
+import common
 
 if __name__ == '__main__':
     pass
@@ -32,18 +34,28 @@ def extract_web_page_utext(url):
     if url == None:
         return None
     
-    res = requests.get(url)
-    #html_source = res.text
+    utext = ""
     
-    content_type = res.headers['Content-Type'] # figure out what you just fetched
-    ctype, charset = content_type.split(';')
-    encoding = charset[len(' charset='):] # get the encoding
-    #print encoding # ie ISO-8859-1
+    html_file = "/home/eliad/workspace/python.tests/html_pages/" + common.UrlParser(url).encode_url() + ".html"
+    if (not os.path.isfile(html_file)):
+        res = requests.get(url)
+        
+        with open(html_file, 'w') as html_file_handler:
+            html_file_handler.write(res.content)
+            
+        content_type = res.headers['Content-Type'] # figure out what you just fetched
+        ctype, charset = content_type.split(';')
+        encoding = charset[len(' charset='):] # get the encoding
+        #print encoding # ie ISO-8859-1
     
-    utext = res.content.decode(encoding) # now you have unicode
-    
-    #html_source = utext.encode('utf8', 'ignore')
-    
+        utext = res.content.decode(encoding)
+            
+    if not utext:
+        with open(html_file, 'r') as file:
+            html_source = file.read().decode('utf-8')
+            # done have headers, assume encoding utf-8
+            utext = html_source
+            
     return utext
     
     
@@ -65,7 +77,7 @@ def use_html2text(utext):
     clean_result = ""
     bad_words = ['*', '#']
     for line in result.splitlines(True):
-        if not any(bad_word in line for bad_word in bad_words):
+        if not any(bad_word in line for bad_word in bad_words) and len(line) > 40:
             clean_result += line
     
     print "html2text clean result: ============================================================="
@@ -75,34 +87,48 @@ def use_html2text(utext):
     
 
 # test
-def use_topia(clean_result):        
+
+def use_topia(clean_text):        
     # https://pypi.python.org/pypi/topia.termextract/
     
     ### TermExtractor
     extractornlp = extract.TermExtractor()
     
-    sorted_term = sorted(extractornlp(clean_result))
-    
-    sorted_by_count = sorted(sorted_term, key=lambda tup: tup[1])
-    
-    for key in sorted_by_count:
-        print str(key[2]) + " -- " + str(key[1]) + " -- " + key[0] 
-        
     ### Tags
-    tagg = extractornlp.tagger(clean_result)
-    for key in tagg:
-        print key[2] + " -- " + key[1] + " -- " + key[0] 
-  
+    tagg = extractornlp.tagger(clean_text)
+#     for key in tagg:
+#         print key[2] + " -- " + key[1] + " -- " + key[0] 
 
+    tag_dic = dict()
+    for key in tagg:
+#         if key[0] != key[2]:
+#             print key[2] + " -- " + key[1] + " -- " + key[0] + " ==> key[0] diff from key[2]"
+        if key[0] in tag_dic:
+            if tag_dic[key[0]][0][0] != key[1] or tag_dic[key[0]][0][1] != key[2]:
+                tag_dic[key[0]].append( ( key[1], key[2]) ) 
+        else:
+            tag_dic[key[0]] = [ ( key[1], key[2] ) ]
+    
+    sorted_term = sorted(extractornlp(clean_text))
+    sorted_by_count = sorted(sorted_term, key=lambda tup: tup[1], reverse=True)
+    term_top = sorted_by_count[:len(sorted_by_count) / 10]
+    
+#     for key in sorted_by_count:
+#         print str(key[2]) + " -- " + str(key[1]) + " -- " + key[0] 
+    
+    return tag_dic, term_top    
+    
 def use_bs(utext):
         
     soup = BeautifulSoup(utext, 'html.parser')
-    
+                
+    keywords = None
     meta_tags = soup.findAll("meta", attrs={"name":"keywords"})
     if len(meta_tags) == 1:
         for meta_tag in meta_tags:
             if "content" in meta_tag.attrs:
                 print("meta name 'keywords' = " + meta_tag["content"])
+                keywords = meta_tag["content"]
         
     desription = None
     meta_tags = soup.findAll("meta", attrs={"name":"description"})
@@ -115,7 +141,7 @@ def use_bs(utext):
     title = soup.title.string
     print("title=" + title)
     
-    return title, desription
+    return title, keywords, desription
          
 def bs_get_text(utext):
     
@@ -144,7 +170,7 @@ def use_lassie(url):
     pprint.pprint (lassie.fetch(url, all_images=True))
     
     
-def use_rake(texts):
+def use_rake(texts, tag_dic, term_top):
     ## https://github.com/csurfer/rake-nltk
     
     r = Rake() # Uses stopwords for english from NLTK, and all puntuation characters.
@@ -154,7 +180,15 @@ def use_rake(texts):
     
     # If you want to provide your own set of stop words and punctuations to
     #r = Rake([u'\\u05d0\\u05ea'])    
+    
+    keywords = dict()
 
+    print "term_top      : " + repr(term_top).decode("unicode-escape")
+    for key in term_top[:10]:
+            if key[0] in keywords:
+                keywords[key[0]] = keywords[key[0]] + key[1]
+            else:
+                keywords[key[0]] = key[1]
     
     for text in texts:
         
@@ -163,17 +197,41 @@ def use_rake(texts):
         r.extract_keywords_from_text(text)
     
         ranked_phrases = r.get_ranked_phrases_with_scores()
-        print repr(ranked_phrases).decode("unicode-escape")
+        print "ranked_phrases: " + repr(ranked_phrases).decode("unicode-escape")
+        if False:
+            for key in ranked_phrases[:10]:
+                if key[1] in keywords:
+                    keywords[key[1]] = keywords[key[1]] + key[0]
+                else:
+                    keywords[key[1]] = key[0]
+                
         
         word_degrees = r.get_word_degrees()
         word_degrees_sorted = sorted(word_degrees.iteritems(), key=lambda tup: tup[1], reverse=True) 
-        print repr(word_degrees_sorted[0:30]).decode("unicode-escape")
+        print "word_degrees  : " + repr(word_degrees_sorted[0:30]).decode("unicode-escape")
+        for key in word_degrees_sorted[:10]:
+            if key[0] in keywords:
+                keywords[key[0]] = keywords[key[0]] + key[1]
+            else:
+                keywords[key[0]] = key[1]
         
         get_word_frequency_distribution = r.get_word_frequency_distribution()
         get_word_frequency_distribution_sorted = sorted(get_word_frequency_distribution.iteritems(), key=lambda tup: tup[1], reverse=True) 
-        print repr(get_word_frequency_distribution_sorted[0:30]).decode("unicode-escape")
+        print "word_frequency: " + repr(get_word_frequency_distribution_sorted[0:30]).decode("unicode-escape")
+        for key in get_word_frequency_distribution_sorted[:10]:
+            if key[0] in keywords:
+                keywords[key[0]] = keywords[key[0]] + key[1]
+            else:
+                keywords[key[0]] = key[1]
         
         
+    keywords_new = []
+    keywords_sorted = sorted(keywords.iteritems(), key=lambda tup: tup[1], reverse=True)
+    for keyword in keywords_sorted:
+        if len(keyword[0]) > 2:
+            keywords_new.append(keyword)
+     
+    print "keywords  : " + repr(keywords_new[0:30]).decode("unicode-escape")
     
     return ranked_phrases
     
@@ -191,11 +249,14 @@ for url in urls:
     print "Start '{0}'.".format(url) 
     utext = extract_web_page_utext(url)
     
-    title, desription = use_bs(utext)
+    title, keywords, desription = use_bs(utext)
     
     clean_text = use_html2text(utext)
     
-    use_rake([title, desription, clean_text])
+    tag_dic, term_top = use_topia(clean_text)
+    
+    print "[title, keywords, desription, clean_text]"
+    use_rake([title, keywords, desription, clean_text], tag_dic, term_top)
 
     
     

@@ -3,6 +3,7 @@
 	<name>experiments_prj</name>
 	<comment></comment>
 	<projects>
+		<project>image_crawler_prj</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

@@ -42,10 +42,6 @@ class image_details(object):
         Constructor
         '''
         
-from enum import Enum
-class advertisers(Enum):
-     doubleclick = 10
-
 
 import time # Measure execution time
 class Stats(object):
