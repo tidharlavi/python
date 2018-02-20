@@ -131,6 +131,48 @@ def bs_test(html_source):
     
     
 import cssutils
+def bs_test_extract_images_from_style(html_source):
+    soup = BeautifulSoup(html_source, 'html.parser')
+    
+    stat = Stats()
+    image_url_arr = []
+        
+    styles = soup.findAll(style=re.compile("background-image"))
+    for style in styles:
+        img_dtl = image_details()
+        
+        div_style = style.get('style')
+        style_attr = cssutils.parseStyle(div_style)
+        url = style_attr['background-image']
+        
+        if url is None or url == 'none':
+            stat.Incr("no_valid_url")
+            continue
+        
+        urlRegex = re.compile('.*url\(\"?([^\"]*)\"?\).*')
+        m = urlRegex.match(url)
+        if not m:
+            continue
+        
+        # Regex fixes
+        src = m.group(1)
+        if src[-1:] == '"':
+            src = src[:-1]
+        
+        html_tag_id = style.get('id')
+        if html_tag_id != None:
+            print "html_tag_id=" + ', '.join(html_tag_id)
+
+        html_tag_class = style.get('class')
+        if html_tag_class != None:
+            print "html_tag_class=" + ', '.join(html_tag_class)
+            
+        image_url_arr.append(src)
+        
+    len_urls = len(image_url_arr)
+    print len_urls
+    
+    
 def bs_test1(html_source):
     
     
@@ -302,7 +344,8 @@ if html_source is None and url is not None:
             html_source = file.read().decode('ascii','ignore')
 
 if html_source is not None:
-    bs_test1(html_source)
+    #bs_test1(html_source)
+    bs_test_extract_images_from_style(html_source)
     
                 
 print("End !!!")  

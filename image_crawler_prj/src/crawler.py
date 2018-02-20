@@ -4,6 +4,7 @@ Created on Dec 21, 2017
 @author: eliad
 '''
 
+import logging
 from datetime import datetime
 import uuid
 
@@ -19,6 +20,9 @@ import task_queue.tasks
 
 # Local lib
 import common
+
+
+log = logging.getLogger(__name__)
 
 class Crawler(object):
     '''
@@ -42,20 +46,22 @@ class Crawler(object):
         self.stats = common.Stats()
         
     def insert_start_url(self, url_info):
-        url_info.uuid = [ str(uuid.uuid4()) ]
+        url_info.uuid = [ "url_" + str(uuid.uuid4()) ]
         url_info.depth = 0;
         url_info.last_crawl = datetime.now()
         
         # Check if url already exist in static list
-        url_info_db = self.coll_urls.find_one({"_id": url_info._id})
-        if url_info_db is None:
-            task_queue.tasks.extract_load_crawl.delay(common.to_dict(url_info))
+        #url_info_db = self.coll_urls.find_one({"_id": url_info._id})
+        #if url_info_db is None:
+        task_queue.tasks.extract_load_crawl.delay(common.to_dict(url_info))
             #task_queue.tasks.extract_load_crawl(common.to_dict(url_info))
         
     def insert_urls(self, url_info_arr):
         '''
         Insert links to extractor task
         '''
+        
+        self.stats.Add("static_page_new", 0)
         
         for url_info in url_info_arr:
             
@@ -76,9 +82,10 @@ class Crawler(object):
                     try:
                         url_info_dic = common.to_dict(url_info)
                         res = self.coll_urls.insert(url_info_dic)
-                    except Exception as e: 
-                        print("Mongo insert Exception: type '",sys.exc_info()[0],"', message '",e,"'")
-                        traceback.print_exc()
+                    except Exception as e:
+                        log.exception("Mongo insert Exception") 
+                        #print("Mongo insert Exception: type '",sys.exc_info()[0],"', message '",e,"'")
+                        #traceback.print_exc()
                         self.stats.Incr("exception_mongo_insert")
                         continue
             
@@ -86,11 +93,6 @@ class Crawler(object):
                         print("Fail insert mongo id '" + url_info._id + "'")
                         self.stats.Incr("error_mongo_add_res_mismatch")
                         continue
-                        
-                    ###### Add url to Q - url extractor/proccessed
-                    #print("Going to extract url '"+url_info.url+"'.")
-                    task_queue.tasks.extract_load_crawl.delay(common.to_dict(url_info))
-                     
                 else:
                     # check if this url already crawled in the current run (check by uuid)
                     if url_info.uuid in url_info_db["uuid"]:
@@ -99,6 +101,10 @@ class Crawler(object):
                     
                     # Add current uuid to url db
                     self.coll_urls.update({"_id": url_info._id}, {'$push': {'uuid': url_info.uuid}})
+                    
+                ###### Add url to Q - url extractor/proccessed
+                #print("Going to extract url '"+url_info.url+"'.")
+                task_queue.tasks.extract_load_crawl.delay(common.to_dict(url_info))
             
             except Exception as e: 
                 print("Crawler.insert_urls Exception: type '",sys.exc_info()[0],"', message '",e,"'")
@@ -107,7 +113,7 @@ class Crawler(object):
             
     def update_url_extract_info(self, url_info):
         
-        if not url_info.extract_info or type(url_info.extract_info) is not dict or not bool(url_info.extract_info):
+        if not hasattr(url_info, "extract_info") or not url_info.extract_info or type(url_info.extract_info) is not dict or not bool(url_info.extract_info):
             return
         
         self.coll_urls.update({"_id": url_info._id}, { "$set": { "extract_info" : url_info.extract_info  } })

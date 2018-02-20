@@ -4,31 +4,95 @@ Created on Dec 5, 2017
 @author: eliad
 '''
 
-class image_details(object):
+from datetime import datetime # datetime now
+import uuid # set image id
+
+from enum import Enum
+
+class ImageDetails(object):
     '''
     classdocs
     '''
 
 
-    def __init__(self, params = {"v": 1.1} ):
+    def __init__(self, ver="1.1" ):
         '''
         Constructor
         '''
-        self.v = params.get("v")
-
+        self.ver = ver
         
+        self.time = datetime.utcnow()
+        
+        self.id = ""
+        self.path = ""
+        self.path_sig_db = ""
+        
+        # Image source URL
+        self.src =  ""
+        
+        self.website_src_url =  ""
+        self.website_domain = ""
+        self.website_info = None
+        
+        self.extract_method = ExtractMethodEnum.other
+        self.download_method = DownloadMethodEnum.other
+        
+        # HTML tag 
+        self.html_tag_id = ""
+        self.html_tag_height = ""
+        self.html_tag_width = ""
+        self.html_tag_alt = ""
+        self.html_tag_title = ""
+        
+        # HTML (surrounding image)
+        self.html_text = ""
+        self.html_link = ""
 
-from enum import Enum
+        self.html_adv = AdvertisersEnum.none
+        
+        # Driver/Browser      
+        self.browser_window_size = None
+        self.browser_location = None
+        self.browser_location_once_scrolled_into_view = None  
+        self.browser_width = ""
+        self.browser_height = ""
+        
+        # image properties
+        self.image_height = ""
+        self.image_width = ""
+        self.image_format = ""
+        self.image_format_description = ""
+        self.image_info = None
+        self.image_mode = ""
+        self.image_text_dic = None # Dict
+        self.image_tile = None
+                
+        # OS
+        self.os_zise = ""
+        
+    def id_set(self):
+        self.id = "image_" + str(uuid.uuid4())
+        return self.id 
 
-class extract_method(Enum):
+
+class ExtractMethodEnum(Enum):
     img_tag = 10
     style_attribute = 20
+    search = 30
+    other = 900
      
-class download_method(Enum):
+class DownloadMethodEnum(Enum):
     src_url = 10
     embeeded = 20
+    uploaded = 30
+    other = 900
      
-class advertisers(Enum):
+class AdvertisersEnum(Enum):
     doubleclick = 10
     taboola = 20
     outbrain = 30
+    none = 900
+    
+    
+    
+    

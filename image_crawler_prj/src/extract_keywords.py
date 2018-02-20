@@ -15,6 +15,13 @@ import html2text
 from topia.termextract import extract 
 from rake_nltk import Rake
 
+import logging
+LOGGING_FILE_NAME = ""
+loggingFormat = '%(asctime)-15s|%(levelname)s|%(name)s|%(funcName)s|%(lineno)d|%(message)s'
+logging.basicConfig(level=logging.DEBUG, format=loggingFormat, filename=LOGGING_FILE_NAME)
+
+log = logging.getLogger(__name__)
+
 class ExtractKeywords(object):
     '''
     classdocs
@@ -28,16 +35,21 @@ class ExtractKeywords(object):
         
     def extract_keywords(self, url = None, html_decoded_text = None, html_file = None):
         
-        print "Start extract_keywords '{0}'.".format(url) 
+        log.info("Start extract_keywords (url '{0}').".format(url)) 
         
+        log.debug("Get decoded HTML text.")
         html_text = self.utext_get(url, html_decoded_text, html_file)
-                
+           
+        log.debug("Get info from HTML: page title, meta keywords, meta description.")
         self.page_title, self.page_meta_keywords, self.page_meta_desription = self.extract_html_info(html_text)    
             
+        log.debug("Get text from  HTML.")        
         text = self.extract_text_content(html_text)
-                
+              
+        log.debug("Use Topia to extract tags and terms from html-text.")
         tag_dic, term_top = self.extract_term(text)
         
+        log.debug("Extract keywords using RAKE from all texts: title, meta-keywords, meta-description, html-text.")
         texts = [self.page_title, self.page_meta_keywords, self.page_meta_desription, text]
         self.keywords = self.keywords_get(texts, tag_dic, term_top)
     
@@ -46,7 +58,6 @@ class ExtractKeywords(object):
             return html_decoded_text.decode('utf-8')
             
         if html_file and os.path.isfile(html_file):
-            
             with open(html_file, 'r') as file:
                 html_text = file.read().decode('utf-8')
                 # done have headers, assume encoding utf-8
@@ -70,7 +81,7 @@ class ExtractKeywords(object):
     def extract_html_info(self, html_text):
         soup = BeautifulSoup(html_text, 'html.parser')
                 
-        keywords = None
+        keywords = ""
         meta_tags = soup.findAll("meta", attrs={"name":"keywords"})
         if len(meta_tags) == 1:
             for meta_tag in meta_tags:
@@ -79,7 +90,7 @@ class ExtractKeywords(object):
                     print("meta name 'keywords' = " + keywords)
                     
             
-        desription = None
+        desription = ""
         meta_tags = soup.findAll("meta", attrs={"name":"description"})
         if len(meta_tags) == 1:
             for meta_tag in meta_tags:
@@ -161,7 +172,7 @@ class ExtractKeywords(object):
         
         keywords = dict()
     
-        print "term_top      : " + repr(term_top).decode("unicode-escape")
+        log.debug("term_top      : " + repr(term_top).decode("unicode-escape"))
         for key in term_top[:10]:
                 if key[0] in keywords:
                     keywords[key[0]] = keywords[key[0]] + key[1]
@@ -169,13 +180,15 @@ class ExtractKeywords(object):
                     keywords[key[0]] = key[1]
         
         for text in texts:
+            if text is None:
+                continue
             
-            print "RAKE on len '{0}'. text: '{1}'".format(len(text), text[0:100].encode('utf-8'))
+            #print "RAKE on len '{0}'. text: '{1}'".format(len(text), text[0:100].encode('utf-8'))
             
             r.extract_keywords_from_text(text)
         
             ranked_phrases = r.get_ranked_phrases_with_scores()
-            print "ranked_phrases: " + repr(ranked_phrases).decode("unicode-escape")
+            #print "ranked_phrases: " + repr(ranked_phrases).decode("unicode-escape")
             if False:
                 for key in ranked_phrases[:10]:
                     if key[1] in keywords:
@@ -186,7 +199,7 @@ class ExtractKeywords(object):
             
             word_degrees = r.get_word_degrees()
             word_degrees_sorted = sorted(word_degrees.iteritems(), key=lambda tup: tup[1], reverse=True) 
-            print "word_degrees  : " + repr(word_degrees_sorted[0:30]).decode("unicode-escape")
+            #print "word_degrees  : " + repr(word_degrees_sorted[0:30]).decode("unicode-escape")
             for key in word_degrees_sorted[:10]:
                 if key[0] in keywords:
                     keywords[key[0]] = keywords[key[0]] + key[1]
@@ -195,7 +208,7 @@ class ExtractKeywords(object):
             
             get_word_frequency_distribution = r.get_word_frequency_distribution()
             get_word_frequency_distribution_sorted = sorted(get_word_frequency_distribution.iteritems(), key=lambda tup: tup[1], reverse=True) 
-            print "word_frequency: " + repr(get_word_frequency_distribution_sorted[0:30]).decode("unicode-escape")
+            #print "word_frequency: " + repr(get_word_frequency_distribution_sorted[0:30]).decode("unicode-escape")
             for key in get_word_frequency_distribution_sorted[:10]:
                 if key[0] in keywords:
                     keywords[key[0]] = keywords[key[0]] + key[1]

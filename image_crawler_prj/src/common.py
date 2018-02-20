@@ -202,8 +202,8 @@ def link_extractor_html(url_info, html_source):
             url_info_new = object_model.url_info.UrlInfo({
                                                            "parent_url": url,
                                                            "url": href,
-                                                           "type": object_model.url_info.url_info_type.unknown,
-                                                           "initiator_type": object_model.url_info.url_info_initiator_type.extracted,
+                                                           "type": object_model.url_info.UrlInfoTypeEnum.unknown,
+                                                           "initiator_type": object_model.url_info.UrlInfoInitiatorTypeEnum.extracted,
                                                            "initiator_id": url,
                                                            "depth": url_info.depth + 1,
                                                            "depth_max": url_info.depth_max,

@@ -14,7 +14,8 @@ app = Celery('task_queue',
 
 # Optional configuration, see the application user guide.
 app.conf.update(
-    #task_always_eager=True
+    task_always_eager=True, # uncomment for debugging - sync
+    worker_hijack_root_logger=False,
 )
 
 if __name__ == '__main__':

@@ -3,9 +3,9 @@ Created on Dec 5, 2017
 
 @author: eliad
 '''
+import logging
 import os # Check if folder/file exists/sizes
 import time # used for unknown name
-from datetime import datetime # datetime now
 import urllib # url parsing
 import urllib2 # Download images
 #import json # pretty dump
@@ -14,6 +14,7 @@ import uuid
 
 from bs4 import BeautifulSoup # handle html parsing and printing
 from bs4.element import Comment
+import cssutils
 
 # get exception info
 import sys 
@@ -24,6 +25,7 @@ from PIL import Image
 
 from pyvirtualdisplay import Display # Chrome headless
 from selenium import webdriver 
+from selenium.common.exceptions import StaleElementReferenceException
 
 import requests
 
@@ -32,6 +34,8 @@ import common
 from object_model import image_details
 from object_model import url_info
 import extract_keywords
+
+log = logging.getLogger(__name__)
 
 class extractor(object):
     '''
@@ -49,13 +53,13 @@ class extractor(object):
         
         self.driver_headless = True
 
-    def extract_info(self, url_info):
+    def extract_info(self, url_inf):
         self.stats.TimeStart("_TotalTime")
         
-        self.url_info = url_info
+        self.url_info = url_inf
         
-        url = url_info.url
-        self.url = url_info.url
+        url = url_inf.url
+        self.url = url_inf.url
         
         # Create relevant folders
         domain = common.UrlParser(url).GetStripDomain()
@@ -76,15 +80,15 @@ class extractor(object):
         
         driver = webdriver.Chrome()
         #driver = webdriver.Firefox()
-        print "extract_info(): driver.get({0})".format(url)
+        log.info("driver.get(%s)", url)
         driver.get(url);
         
-        window_size =  driver.get_window_size()
-        driver.get_screenshot_as_file(self.url_time_folder + "/start_try_1920_1080_actual_"+str(window_size["width"])+"_"+str(window_size["height"])+".png")
+        self.window_size =  driver.get_window_size()
+        driver.get_screenshot_as_file(self.url_time_folder + "/start_try_1920_1080_actual_"+str(self.window_size["width"])+"_"+str(self.window_size["height"])+".png")
         
         driver.set_window_size(1920, 1080)
         #print driver.get_window_size()
-        driver.get_screenshot_as_file(self.url_time_folder + "/try_1920_1080_actual_"+str(window_size["width"])+"_"+str(window_size["height"])+".png")
+        driver.get_screenshot_as_file(self.url_time_folder + "/try_1920_1080_actual_"+str(self.window_size["width"])+"_"+str(self.window_size["height"])+".png")
         
         #driver.set_window_size(480, 320)
         #print driver.get_window_size()
@@ -101,6 +105,7 @@ class extractor(object):
         if (not os.path.isfile(html_file) and len(html_file) < 500):
             with open(html_file, 'w') as html_file_handler:
                 html_file_handler.write(self.html_source)
+        self.soup = BeautifulSoup(self.html_source, 'html.parser')
         
         # temporary array with basic info on images
         img_dtl_arr = []
@@ -120,14 +125,17 @@ class extractor(object):
         self.download_images(img_dtl_arr)
         
         # extract information from web page: tags, keywords, title
-        print "extract_info(): self.extract_info_from_html_tag()"
-        self.extract_web_page_info()
-        for img_dtl in img_dtl_arr:
-            img_dtl.web_page_info = self.url_info.extract_info.copy()
-        
+        print "extract_info(): self.extract_website_info()"
+        try:
+            self.extract_website_info()
+            for img_dtl in img_dtl_arr:
+                img_dtl.website_info = self.url_info.extract_info.copy()
+        except:
+            log.exception("Exception during extract_website_info(), mainly for keywords extraction.")
+            
         # Extract all links
         print "extract_info(): common.link_extractor()"
-        self.internal_links, self.external_links = common.link_extractor(url_info, self.html_source, self.url_time_folder)
+        self.internal_links, self.external_links = common.link_extractor(url_inf, self.html_source, self.url_time_folder)
         self.stats.Add("internal_links_cnt", len(self.internal_links))
         self.stats.Add("external_links_cnt", len(self.external_links))
         
@@ -145,20 +153,86 @@ class extractor(object):
     #
     
     def extract_images_from_style_attribute(self, url, driver, img_dtl_arr):
-        # Get all elements and go over them
-        elements = driver.find_elements_by_xpath("//*")
         
-        for elem in elements:
-            try:
-                # check if they have 'style' attribute
-                style = elem.get_attribute('style')
-                if not style:
+        if False:
+            ### using selenuiom driver
+            self.stats.TimeStart("extract_images_from_style_attribute_selenuim_time")
+            # Get all elements and go over them
+            elements = driver.find_elements_by_xpath("//*")
+            self.stats.Add("extract_images_from_style_attribute_selenuim_elem_cnt", len(elements))
+            for elem in elements:
+                try:
+                    self.stats.Incr("extract_images_from_style_attribute_selenuim_url_check")
+                    # check if they have 'style' attribute
+                    style = elem.get_attribute('style')
+                    if not style:
+                        continue
+        
+                    # Check if we have url
+                    # width: 92px; height: 19px; background: url("/images/searchDropDown.gif") 3px 7px no-repeat rgb(255, 255, 255); position: absolute; left: 1px; z-index: 10; border: 1px solid rgb(216, 218, 221);
+                    urlRegex = re.compile('.*url\(\"?([^\"]*)\"?\).*')
+                    m = urlRegex.match(style)
+                    if not m:
+                        continue
+                    
+                    # Regex fixes
+                    src = m.group(1)
+                    if src[-1:] == '"':
+                        src = src[:-1]
+                        
+                    self.stats.Incr("extract_images_from_style_attribute_selenuim_url_cnt")
+                    img_dtl = image_details.ImageDetails()
+                    
+                    img_dtl.website_src_url = url
+                    
+                    img_dtl.src = src
+                    
+                    img_dtl.extract_method = image_details.ExtractMethodEnum.style_attribute
+                    
+                    img_dtl.html_tag_id = elem.get_attribute("id")
+                    if img_dtl.html_tag_id == None or img_dtl.html_tag_id == "" or len(img_dtl.html_tag_id) < 1:
+                        self.stats.Incr("fail_to_get_img_html_tag_id")
+                        
+                    img_dtl.browser_window_size = self.window_size
+                    
+                    img_dtl.html_tag_height = elem.get_attribute('height')
+                    img_dtl.html_tag_width = elem.get_attribute('width')
+                    img_dtl.browser_location = elem.location
+                    img_dtl.browser_location_once_scrolled_into_view = elem.location_once_scrolled_into_view  
+                    img_dtl.browser_width = elem.size["width"]
+                    img_dtl.browser_height = elem.size["height"]
+                    
+                    #img_dtl_arr.append(img_dtl)
+                except StaleElementReferenceException:
+                    log.exception("StaleElementReferenceException during extract_images_from_style_attribute() break !!!.")
+                    self.stats.Incr("exception_stale_extract_images_from_style_attribute_selenuim")
+                    break
+                except Exception:
+                    log.exception("Exception during extract_images_from_style_attribute() handling. also break !!!")
+                    self.stats.Incr("exception_extract_images_from_style_attribute_selenuim")
+                    break
+                    
+            self.stats.TimeEnd("extract_images_from_style_attribute_selenuim_time")
+                    
+            
+        ### using selenuiom driver
+        self.stats.TimeStart("extract_images_from_style_attribute_soup_time")
+        try:
+            styles = self.soup.findAll(style=re.compile("background-image"))
+            self.stats.Add("extract_images_from_style_attribute_soup_elem_cnt", len(styles))
+            for style in styles:
+                img_dtl = image_details.ImageDetails()
+                
+                div_style = style.get('style')
+                style_attr = cssutils.parseStyle(div_style)
+                url = style_attr['background-image']
+                
+                if url is None or url == 'none':
+                    self.stats.Incr("extract_images_from_style_attribute_soup_not_valid_url")
                     continue
-    
-                # Check if we have url
-                # width: 92px; height: 19px; background: url("/images/searchDropDown.gif") 3px 7px no-repeat rgb(255, 255, 255); position: absolute; left: 1px; z-index: 10; border: 1px solid rgb(216, 218, 221);
+                
                 urlRegex = re.compile('.*url\(\"?([^\"]*)\"?\).*')
-                m = urlRegex.match(style)
+                m = urlRegex.match(url)
                 if not m:
                     continue
                 
@@ -167,35 +241,40 @@ class extractor(object):
                 if src[-1:] == '"':
                     src = src[:-1]
                     
-                self.stats.Incr("images_from_style_attribute")
-                img_dtl = image_details.image_details()
-                
-                img_dtl.page_src_url = url
-                img_dtl.time = datetime.utcnow()
+                img_dtl.website_src_url = url
                 
                 img_dtl.src = src
                 
-                img_dtl.extract_method = image_details.extract_method.style_attribute
+                img_dtl.extract_method = image_details.ExtractMethodEnum.style_attribute
                 
-                img_dtl.html_tag_id = elem.get_attribute("id")
-                if img_dtl.html_tag_id == None or img_dtl.html_tag_id == "" or len(img_dtl.html_tag_id) < 1:
-                    self.stats.Incr("fail_to_get_img_html_tag_id")
+                html_tag_id = style.get('id')
+                if html_tag_id != None:
+                    print "html_tag_id=" + ', '.join(html_tag_id)
+                    elem = driver.find_element_by_id(html_tag_id)
                     
-                img_dtl.window_size = driver.get_window_size()
-                
-                img_dtl.html_tag_height = elem.get_attribute('height')
-                img_dtl.html_tag_width = elem.get_attribute('width')
-                img_dtl.browser_location = elem.location
-                img_dtl.browser_location_once_scrolled_into_view = elem.location_once_scrolled_into_view  
-                img_dtl.browser_width = elem.size["width"]
-                img_dtl.browser_height = elem.size["height"]
-                
-                img_dtl_arr.append(img_dtl)
-            except Exception as e:
-                print("Exception during extract_images_from_style_attribute() handling. first loop.")
-                print("Exception: type '",sys.exc_info()[0],"', message '",e,"'")
-                traceback.print_exc()
-                self.stats.Incr("exception_extract_images_from_style_attribute")
+                    img_dtl.html_tag_height = elem.get_attribute('height')
+                    img_dtl.html_tag_width = elem.get_attribute('width')
+                    img_dtl.browser_location = elem.location
+                    img_dtl.browser_location_once_scrolled_into_view = elem.location_once_scrolled_into_view  
+                    img_dtl.browser_width = elem.size["width"]
+                    img_dtl.browser_height = elem.size["height"]
+        
+                else:
+                    html_tag_classes = style.get('class')
+                    if html_tag_classes != None:
+                        log.info("html_tag_classes '%s'", html_tag_classes)
+                        
+                        for tag_class in html_tag_classes:
+                            html_tags = driver.find_elements_by_css_selector(tag_class)
+                            log.info("Found '%s' for class '%s'.", len(html_tags), tag_class)
+                        
+                self.stats.Incr("extract_images_from_style_attribute_soup_url_cnt")
+        except Exception:
+                log.exception("Exception during extract_images_from_style_attribute() soup handling.")
+                self.stats.Incr("exception_extract_images_from_style_attribute_soup")
+        
+        self.stats.TimeEnd("extract_images_from_style_attribute_soup_time")       
+        
     
     def extract_images_from_img_tag(self, url, driver, img_dtl_arr):
         images = driver.find_elements_by_tag_name('img')
@@ -206,26 +285,25 @@ class extractor(object):
                 
                 self.stats.Incr("images_from_img_tag")
             
-                img_dtl = image_details.image_details()
+                img_dtl = image_details.ImageDetails()
     
-                img_dtl.page_src_url = url
-                img_dtl.time = datetime.utcnow()
+                img_dtl.website_src_url = url
     
                 img_dtl.src = img.get_attribute('src')
-                img_dtl.alt = img.get_attribute('alt')
-                if img_dtl.alt:
+                img_dtl.html_tag_alt = img.get_attribute('alt')
+                if img_dtl.html_tag_alt:
                     self.stats.Incr("image_have_alt")
-                img_dtl.title = img.get_attribute('title')
-                if img_dtl.title:
+                img_dtl.html_tag_title = img.get_attribute('title')
+                if img_dtl.html_tag_title:
                     self.stats.Incr("image_have_title")
                 
-                img_dtl.extract_method = image_details.extract_method.img_tag
+                img_dtl.extract_method = image_details.ExtractMethodEnum.img_tag
                 
                 img_dtl.html_tag_id = img.get_attribute("id")
                 if img_dtl.html_tag_id == None or img_dtl.html_tag_id == "" or len(img_dtl.html_tag_id) < 1:
                     self.stats.Incr("fail_to_get_img_html_tag_id")
                     
-                img_dtl.window_size = driver.get_window_size()
+                img_dtl.browser_window_size = self.window_size
                 
                 img_dtl.html_tag_height = img.get_attribute('height')
                 img_dtl.html_tag_width = img.get_attribute('width')
@@ -235,11 +313,13 @@ class extractor(object):
                 img_dtl.browser_width = img.size["width"]
                 img_dtl.browser_height = img.size["height"]
                 img_dtl_arr.append(img_dtl)
+            except StaleElementReferenceException:
+                log.exception("StaleElementReferenceException during extract_images_from_img_tag() break !!!.")
+                self.stats.Incr("exception_stale_extract_images_from_img_tag")
+                break
             except Exception:
-                print("Exception during extract_images_from_img_tag() handling. first loop.")
-                exc_type, value, exc_traceback = sys.exc_info()
-                print("Global Exception: type '"+str(exc_type)+"', value '"+str(value)+"'")
-                traceback.print_exc()
+                log.exception("Exception during extract_images_from_img_tag() handling. first loop.")
+                self.stats.Incr("exception_extract_images_from_img_tag")
                 
     def download_images(self, img_dtl_arr):
         for img_dtl in img_dtl_arr:
@@ -249,8 +329,12 @@ class extractor(object):
                     self.stats.Incr("skip_no_src")
                     continue
                 
-                file_extension = os.path.splitext(img_dtl.src)[1][1:]
-                img_dtl.extension = file_extension.lower()
+                filename_arr = os.path.splitext(common.UrlParser(img_dtl.src).parseResult.path)
+                if len(filename_arr) != 2:
+                    self.stats.Incr("image_file_no_extension")
+                    continue
+                
+                img_dtl.extension = filename_arr[1][1:].lower()
                 
                 if img_dtl.extension in ['svg']:
                     self.stats.Incr("skip_svg_file_extension")
@@ -271,33 +355,31 @@ class extractor(object):
     
                 self.image_details_arr.append(img_dtl)
                 self.stats.Incr("append_image")
-            except Exception as e: 
-                print("======= download_images() Exception: type '",sys.exc_info()[0],"', message '",e,"'")
-                print ', '.join("%s: %s" % img_dtl for img_dtl in vars(img_dtl).items())
-                traceback.print_exc()
+            except Exception: 
+                log.exception("Exception during download_image(). img_dtl '" + ', '.join("%s: %s" % img_dtl for img_dtl in vars(img_dtl).items()) + "'.")
                 continue
 
     def download_image(self, img_dtl):
 
         src = img_dtl.src
-        url = img_dtl.page_src_url
+        url = img_dtl.website_src_url
 
         domain = common.UrlParser(url).GetStripDomain()
-        img_dtl.domain = domain
+        img_dtl.website_domain = domain
                 
         destFolder = self.url_time_folder + "/images"
       
         if "data:image" in src:
             # src="data:image/png;base64,iVBORw0KG .... "
             fileName = self.download_image_embeeded(src, destFolder)
-            img_dtl.extract_method = image_details.download_method.embeeded
+            img_dtl.download_method = image_details.DownloadMethodEnum.embeeded
         else:
             # <img class="lazy" data-original="https://go.ynet.co.il/TipIsraeli/pics/ynetshopsBig/images/assets/product_images/74510_105.jpg" alt="" title="???? 554 ???? " width="105px" height="105px" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsQAAA7EAZUrDhsAAAANSURBVBhXYzh8+PB/AAffA0nNPuCLAAAAAElFTkSuQmCC">
             fileName = self.download_image_src(src, domain, destFolder)
-            img_dtl.extract_method = image_details.download_method.src_url
+            img_dtl.download_method = image_details.DownloadMethodEnum.src_url
 
         if fileName is None:
-            print("Fail to download '"+src+"', fileName '"+fileName+"'.")
+            log.debug("Fail to download '"+src+".")
             self.stats.Incr("skip_fail_download")
             return None
 
@@ -310,7 +392,7 @@ class extractor(object):
         
         img_dtl.path = str(fileName)
         #print("Download: src '"+src+"' to fileName '"+fileName+"'.")
-        img_dtl.id = "image_" + str(uuid.uuid4())
+        img_dtl.id_set()
 
         try:
             with Image.open(fileName) as im:
@@ -322,13 +404,20 @@ class extractor(object):
                 #img_dtl.image_info = im.info
                 img_dtl.image_mode = im.mode
                 if hasattr(im, "text"):
-                    img_dtl.image_text = im.text
+                    if isinstance(im.text, dict):
+                        img_dtl.image_text_dic = im.text.copy()
+                    else:
+                        log.info("Eliad: PIL im.text is not a dict !!!!")
                 #img_dtl.image_tile = im.tile
+                
+                # check if its animated gif
+                if img_dtl.extension in ['gif'] and im.is_animated:
+                    log.info("Image is animated gif, skip it '%s'.", fileName)
+                    self.stats.Incr("skip_animated_gif")
+                    return None
 
-        except Exception as e: 
-            print("Fail to Image.open '"+fileName+"'.")
-            print("Exception: type '",sys.exc_info()[0],"', message '",e,"'")
-            traceback.print_exc()
+        except Exception: 
+            log.exception("Fail to PIL Image.open().")
             self.stats.Incr("skip_fail_image_open")
             return None
 
@@ -337,18 +426,9 @@ class extractor(object):
                 self.stats.Incr("skip_irr")
                 #print("Irrelevent: '" + ', '.join("%s: %s" % item for item in vars(img_dtl).items()) + "'." )
                 #print("skip_irr: os_size '"+str(img_dtl.os_size)+"', browser_height '"+str(img_dtl.browser_height)+"', browser_width '"+str(img_dtl.browser_width)+"', image_height '"+str(img_dtl.image_height)+"', image_width '"+str(img_dtl.image_width)+"' for '"+img_dtl.src+"'.")
-                basename = os.path.basename(src)
-                if '?' in basename:
-                    file_name_with_ext_arr = basename.split('?')[0].split('.')
-                    ext = ""
-                    if len(file_name_with_ext_arr) > 2:
-                        ext = file_name_with_ext_arr[1]
-                    encoded_basename = urllib.quote(basename, '')
-                    encoded_basename = encoded_basename + '.' + ext
-                    filename_move = destFolder + "/irr/" + encoded_basename
-                        
-                else:
-                    filename_move = destFolder + "/irr/" + basename
+                
+                basename = os.path.basename(img_dtl.path)
+                filename_move = destFolder + "/irr/" + basename
 
                 if not os.path.exists(filename_move):
                     os.rename(fileName, filename_move)
@@ -384,31 +464,13 @@ class extractor(object):
         return filename
 
     def download_image_src(self, src, domain, destFolder):
-        # Set up image src
-        if src.startswith('http'):
-            src_full_path = src
-        elif src.startswith('//'):
-            src_full_path = "http:" + src
-        elif domain in src:
-            src_full_path = "http:" + src
-        else:
-            src_full_path = "http://" + domain + src
-
-        # setup target file name
-        basename = os.path.basename(src)
-
-        fileName = destFolder + "/" + basename
-        filename_irr = destFolder + "/irr/" + basename
-        if '?' in basename:
-            print("basename '"+basename+"', src '"+src+"'.")
-            file_name_with_ext = basename.split('?')[0]
-            if file_name_with_ext is not "":
-                file_name_with_ext_arr = file_name_with_ext.split('.')
-                if len(file_name_with_ext_arr) > 2:
-                    ext = file_name_with_ext_arr[1]
-                    encoded_basename = urllib.quote(basename, '')
-                    encoded_basename = encoded_basename + '.' + ext
-                    fileName = destFolder + "\\" + encoded_basename
+        src_parse = common.UrlParser(src)
+        src_full_path = src_parse.url_complete_from_parent(self.url, True, False)
+        
+        image_basename = os.path.basename(src_parse.parseResult.path)
+        
+        fileName = destFolder + "/" + image_basename
+        filename_irr = destFolder + "/irr/" + image_basename
 
         # check if file already exist
         if os.path.exists(fileName):
@@ -421,7 +483,7 @@ class extractor(object):
             self.stats.Incr("image_irr_exist")
             return filename_irr
 
-        #print("Try to download: src_full_path '"+src_full_path+"' to fileName '"+fileName+"'.")
+        #log.debug("Try to download: src_full_path '"+src_full_path+"' to fileName '"+fileName+"'.")
 
         try:
             # try to get image
@@ -447,7 +509,7 @@ class extractor(object):
             with open(fileName, 'wb') as f:
                 f.write(response.read())
         except Exception:
-            print("Fail to save '"+fileName+"'.")
+            log.exception("Fail to save '"+fileName+"'.")
             return None
 
         return fileName
@@ -457,22 +519,20 @@ class extractor(object):
         if img_dtl_arr is None:
             img_dtl_arr = self.image_details_arr
             
-        soup = BeautifulSoup(self.html_source, 'html.parser')
-        
         self.image_links = []
         
         for img_dtl in img_dtl_arr:
             try:
                 if "taboola" in img_dtl.src:
-                    img_dtl.adv = image_details.advertisers.taboola
-                    self.stats.Incr("found_adv_" + image_details.advertisers.taboola.name)
+                    img_dtl.html_adv = image_details.AdvertisersEnum.taboola
+                    self.stats.Incr("found_adv_" + image_details.AdvertisersEnum.taboola.name)
                     
                 if "outbrain" in img_dtl.src:
-                    img_dtl.adv = image_details.advertisers.outbrain
-                    self.stats.Incr("found_adv_" + image_details.advertisers.outbrain.name)
+                    img_dtl.html_adv = image_details.AdvertisersEnum.outbrain
+                    self.stats.Incr("found_adv_" + image_details.AdvertisersEnum.outbrain.name)
                 
                 #print "New image ==========================="
-                img_soup_arr = soup.findAll('img', {'src': img_dtl.src})
+                img_soup_arr = self.soup.findAll('img', {'src': img_dtl.src})
                 if len(img_soup_arr) != 1:
                     self.stats.Incr("same_src_img_"+str(len(img_soup_arr)))
                     #print("Error: len(img_soup_arr)=" + str(len(img_soup_arr)))
@@ -488,7 +548,7 @@ class extractor(object):
                         break
                     
                     if img_soup_p.name == 'a' and not hasattr(img_dtl, 'link'):
-                        img_dtl.link = img_soup_p.get("href")
+                        img_dtl.html_link = img_soup_p.get("href")
                         self.stats.Incr("found_link_in_" + str(i))
                         
                         href = img_soup_p.get('href')
@@ -500,34 +560,33 @@ class extractor(object):
                         url_info_new = url_info.UrlInfo({
                                                            "parent_url": self.url,
                                                            "url": href,
-                                                           "type": url_info.url_info_type.unknown,
-                                                           "initiator_type": url_info.url_info_initiator_type.image,
+                                                           "type": url_info.UrlInfoTypeEnum.unknown,
+                                                           "initiator_type": url_info.UrlInfoInitiatorTypeEnum.image,
                                                            "initiator_id": img_dtl.id,
                                                            "depth": 0,
                                                            "depth_max": 1,
-                                                           "uuid": [ "url" + str(uuid.uuid4()) ],
+                                                           "uuid": [ "url_" + str(uuid.uuid4()) ],
                                                            })
                         
                         self.image_links.append(url_info_new)
                         
-                        if "doubleclick" in img_dtl.link:
-                            img_dtl.adv = image_details.advertisers.doubleclick
-                            self.stats.Incr("found_adv_" + image_details.advertisers.doubleclick.name)
+                        if "doubleclick" in img_dtl.html_link:
+                            img_dtl.html_adv = image_details.AdvertisersEnum.doubleclick
+                            self.stats.Incr("found_adv_" + image_details.AdvertisersEnum.doubleclick.name)
                     
                     text = self.text_from_soup(img_soup_p).strip()
                     if text and not hasattr(img_dtl, 'text'):
-                        img_dtl.text = text
+                        img_dtl.html_text = text
                         self.stats.Incr("found_text_in_"+str(i))
                         
                     img_soup_p = img_soup_p.parent
                         
                 #print(str(index) + ": " + ', '.join("%s: %s" % item for item in vars(img_dtl).items()) + "'." )
-            except Exception as e: 
-                print("extract_info_from_html_tag Exception: type '",sys.exc_info()[0],"', message '",e,"'")
-                traceback.print_exc()
+            except: 
+                log.exception("")
                 continue
 
-    def extract_web_page_info(self):
+    def extract_website_info(self):
         
         ext_keywords = extract_keywords.ExtractKeywords({})
         ext_keywords.extract_keywords(html_decoded_text = self.html_source)
@@ -550,7 +609,10 @@ class extractor(object):
         return True
     
     def text_from_soup(self, soup):
-        texts = soup.findAll(text=True)
+        if soup != None:
+            texts = soup.findAll(text=True)
+        else:
+            texts = self.soup.findAll(text=True)
         visible_texts = filter(self.tag_visible, texts)  
         return u" ".join(t.strip() for t in visible_texts)        
     

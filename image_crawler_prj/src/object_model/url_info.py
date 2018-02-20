@@ -42,13 +42,14 @@ class UrlInfo(object):
 
 from enum import Enum
 
-class url_info_type(Enum):
+class UrlInfoTypeEnum(Enum):
     static = 10
     dynamic = 20
     unknown = 90
     
-class url_info_initiator_type(Enum):
+class UrlInfoInitiatorTypeEnum(Enum):
     manual = 10
     scheduled = 20
     extracted = 30
     image = 40
+    search = 50
