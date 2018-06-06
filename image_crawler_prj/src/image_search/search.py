@@ -94,12 +94,12 @@ class Search(object):
                         # fill img object
                         img_dtl.image_height = im.size[1]
                         img_dtl.image_width = im.size[0]
-                        img_dtl.image_format = im.format
-                        img_dtl.image_format_description = im.format_description
+                        #img_dtl.image_format = im.format
+                        #img_dtl.image_format_description = im.format_description
                         #img_dtl.image_info = im.info
-                        img_dtl.image_mode = im.mode
-                        if hasattr(im, "text"):
-                            img_dtl.image_text = im.text
+                        #img_dtl.image_mode = im.mode
+                        #if hasattr(im, "text"):
+                        #    img_dtl.image_text = im.text
                         #img_dtl.image_tile = im.tile
         
                 except Exception as e: 
@@ -109,7 +109,7 @@ class Search(object):
             img_dtl.cnt = 1
             img_dtl.path_sig_db = filename
             metadata["details"] = [ common.to_dict(img_dtl) ] 
-            metadata["website_info"] = [ img_dtl.website_info ]
+            #metadata["website_info"] = [ img_dtl.website_info ]
             self.ses.add_image(img_dtl.path, None, False, metadata, False, img_dtl.id)
                 
         else:
@@ -141,7 +141,6 @@ class Search(object):
                                                "initiator_id": None,
                                                "depth": 0,
                                                "depth_max": 1,
-                                               "uuid": [ "url_" + str(uuid.uuid4()) ],
                                                })
             
             url_info_arr.append(url_info_new)

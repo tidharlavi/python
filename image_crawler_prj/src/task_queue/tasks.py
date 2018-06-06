@@ -21,14 +21,25 @@ import crawler
 
 # locals
 import object_model
+import common
+
+# Crawler stats
+from elasticsearch import Elasticsearch
+from datetime import datetime
 
 celery_log = get_task_logger(__name__)
 
 @app.task
 def extract_load_crawl(url_info_dic):
-    celery_log.info('task extract_load_crawl'.format())
+    celery_log.info('task extract_load_crawl()')
+    
+    stats = common.Stats()
     
     url_info = object_model.url_info.UrlInfo(url_info_dic)
+    
+    stats.Add("crwlr_id", url_info.crwl_curr)
+    stats.Add("crwlr_url", url_info.url)
+    stats.Add("datetime", datetime.now())
     
     celery_log.info(', '.join("%s: %s" % url_info for url_info in vars(url_info).items()))
     
@@ -39,8 +50,13 @@ def extract_load_crawl(url_info_dic):
     })
     
     celery_log.info('Going to ext.extract_info(url_info)')
-    ext.extract_info(url_info)
-    print("Statistics extractor: '"+json.dumps(ext.stats.Get())+"'.")
+    res = ext.extract_info(url_info)
+    celery_log.info("Statistics extractor: '%s'.", ext.stats.Print(pretty=False))
+    if not res:
+        celery_log.info('Fail to ext.extract_info(url_info), return Task.')
+        return
+    
+    stats.add_stats(ext.stats, "ext")
     
     if url_info.initiator_type == object_model.url_info.UrlInfoInitiatorTypeEnum.image:
         celery_log.info('Initiated by Image (image link).')
@@ -53,22 +69,35 @@ def extract_load_crawl(url_info_dic):
     # Go over extract images and add them to image
     celery_log.info('Going to: ldr.load_image_details_array().')
     ldr.load_image_details_array(ext.image_details_arr)
-    print("Statistics loader: '"+json.dumps(ldr.stats.Get())+"'.")
+    celery_log.info("Statistics loader: '%s'.", ldr.stats.Print(pretty=False))
+    stats.add_stats(ldr.stats, "ldr")
 
-    # Add internal links to taskq 
     crlr = crawler.Crawler({})
     celery_log.info('Going to: crlr.update_url_extract_info().')
-    crlr.update_url_extract_info(url_info)
+    crlr.update_url_extract_info(ext, url_info)
     
-    celery_log.info('Going to: crlr.insert_urls().')
-    crlr.insert_urls(ext.internal_links)
-    print("Statistics crawler: '"+json.dumps(crlr.stats.Get())+"'.")
+    # Add internal links to taskq
+    if url_info.initiator_type != object_model.url_info.UrlInfoInitiatorTypeEnum.image: 
+        celery_log.info('Going to: crlr.insert_urls(ext.image_links).')
+        crlr.insert_urls(ext.internal_links)
+        celery_log.info("Statistics crawler internal_links: '%s'.", crlr.stats.Print(pretty=False))
+        stats.add_stats(crlr.stats, "crlr_links")
+        
+        celery_log.info('Going to: crlr.insert_urls(ext.image_links).')
+        crlr.insert_urls(ext.image_links)
+        celery_log.info("Statistics crawler image_links: '%s'.", crlr.stats.Print(pretty=False))
+        stats.add_stats(crlr.stats, "crlr_image_links")
     
-    celery_log.info('1going to: crlr.insert_urls().')
-    crlr.insert_urls(ext.image_links)
-    print("Statistics crawler: '"+json.dumps(crlr.stats.Get())+"'.")
+    celery_log.info('Going to: update crwl statistics')
+    ES_CRWLR_STATS_INDEX = "crwlr_stats"
+    ES_CRWLR_STATS_DOC_TYPE = 'crwlr_stat'
+    es = Elasticsearch()
+    if not es.indices.exists(index=ES_CRWLR_STATS_INDEX):
+        es.indices.create(index=ES_CRWLR_STATS_INDEX)
     
-    
+    rec = stats.Get()
+    rec_id = url_info.crwl_curr + "_" + url_info._id
+    es.index(index=ES_CRWLR_STATS_INDEX, doc_type=ES_CRWLR_STATS_DOC_TYPE, body=rec, id=rec_id)
     
 
 

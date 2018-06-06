@@ -17,6 +17,7 @@ import re # string parsing: extract url from style
 from bs4 import BeautifulSoup
 from bs4.element import Comment
 import json
+import logging
 
 # get exception info
 import sys 
@@ -30,6 +31,11 @@ from selenium import webdriver
 
 import urlparse # parse url
 import urllib # parse url
+
+LOGGING_FILE_NAME = ""
+loggingFormat = '%(asctime)-15s|%(levelname)s|%(name)s|%(funcName)s|%(lineno)d|%(message)s'
+logging.basicConfig(level=logging.INFO, format=loggingFormat, filename=LOGGING_FILE_NAME)
+log = logging.getLogger("__name__")
 
 class image_details(object):
     '''
@@ -134,42 +140,68 @@ import cssutils
 def bs_test_extract_images_from_style(html_source):
     soup = BeautifulSoup(html_source, 'html.parser')
     
-    stat = Stats()
-    image_url_arr = []
+    stats = Stats()
+    img_dtl_arr = []
         
-    styles = soup.findAll(style=re.compile("background-image"))
-    for style in styles:
-        img_dtl = image_details()
-        
-        div_style = style.get('style')
-        style_attr = cssutils.parseStyle(div_style)
-        url = style_attr['background-image']
-        
-        if url is None or url == 'none':
-            stat.Incr("no_valid_url")
-            continue
-        
-        urlRegex = re.compile('.*url\(\"?([^\"]*)\"?\).*')
-        m = urlRegex.match(url)
-        if not m:
-            continue
-        
-        # Regex fixes
-        src = m.group(1)
-        if src[-1:] == '"':
-            src = src[:-1]
-        
-        html_tag_id = style.get('id')
-        if html_tag_id != None:
-            print "html_tag_id=" + ', '.join(html_tag_id)
-
-        html_tag_class = style.get('class')
-        if html_tag_class != None:
-            print "html_tag_class=" + ', '.join(html_tag_class)
+    
+    try:
+        styles = soup.findAll(style=re.compile("background-image"))
+        stats.Add("extract_images_from_style_attribute_soup_elem_cnt", len(styles))
+        for style in styles:
+            img_dtl = image_details()
             
-        image_url_arr.append(src)
-        
-    len_urls = len(image_url_arr)
+            div_style = style.get('style')
+            style_attr = cssutils.parseStyle(div_style)
+            background_image_url = style_attr['background-image']
+            
+            if background_image_url is None or background_image_url == 'none':
+                stats.Incr("extract_images_from_style_attribute_soup_not_valid_url")
+                continue
+            
+            urlRegex = re.compile('.*url\(\"?([^\"]*)\"?\).*')
+            m = urlRegex.match(background_image_url)
+            if not m:
+                continue
+            
+            # Regex fixes
+            src = m.group(1)
+            if src[-1:] == '"':
+                src = src[:-1]
+                
+            img_dtl.website_src_url = background_image_url
+            
+            img_dtl.src = src
+            
+            img_dtl.extract_method = "111" # image_details.ExtractMethodEnum.style_attribute
+            
+            html_tag_id = style.get('id')
+            if html_tag_id != None:
+                print "html_tag_id=" + ', '.join(html_tag_id)
+                elem = driver.find_element_by_id(html_tag_id)
+                
+                img_dtl.html_tag_height = elem.get_attribute('height')
+                img_dtl.html_tag_width = elem.get_attribute('width')
+                img_dtl.browser_location = elem.location
+                img_dtl.browser_location_once_scrolled_into_view = elem.location_once_scrolled_into_view  
+                img_dtl.browser_width = elem.size["width"]
+                img_dtl.browser_height = elem.size["height"]
+    
+            else:
+                html_tag_classes = style.get('class')
+                if html_tag_classes != None:
+                    log.info("html_tag_classes '%s'", html_tag_classes)
+                    
+                    for tag_class in html_tag_classes:
+                        html_tags = driver.find_elements_by_css_selector(tag_class)
+                        log.info("Found '%s' for class '%s'.", len(html_tags), tag_class)
+                    
+            stats.Incr("extract_images_from_style_attribute_soup_url_cnt")
+            img_dtl_arr.append(img_dtl)
+    except Exception:
+            log.exception("Exception during extract_images_from_style_attribute() soup handling.")
+            stats.Incr("exception_extract_images_from_style_attribute_soup")
+    
+    len_urls = len(img_dtl_arr)
     print len_urls
     
     

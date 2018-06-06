@@ -21,18 +21,24 @@ class ImageDetails(object):
         '''
         self.ver = ver
         
+        # Recurring (same: domain, image src, dims. different: time, crawl, in page location, page)
         self.time = datetime.utcnow()
+        self.cnt = 0
+        
+        self.recurring = [] # { time, crawl, page }
+        self.recurring_cnt = 0
         
         self.id = ""
         self.path = ""
         self.path_sig_db = ""
+        self.crwl = ""
         
         # Image source URL
         self.src =  ""
         
         self.website_src_url =  ""
         self.website_domain = ""
-        self.website_info = None
+        #self.website_info = None
         
         self.extract_method = ExtractMethodEnum.other
         self.download_method = DownloadMethodEnum.other
@@ -54,26 +60,37 @@ class ImageDetails(object):
         self.browser_window_size = None
         self.browser_location = None
         self.browser_location_once_scrolled_into_view = None  
-        self.browser_width = ""
-        self.browser_height = ""
+        self.browser_width = 0
+        self.browser_height = 0
         
         # image properties
         self.image_height = ""
         self.image_width = ""
-        self.image_format = ""
-        self.image_format_description = ""
-        self.image_info = None
-        self.image_mode = ""
-        self.image_text_dic = None # Dict
-        self.image_tile = None
+        #self.image_format = ""
+        #self.image_format_description = ""
+        #self.image_info = None
+        #self.image_mode = ""
+        #self.image_text_dic = None # Dict
+        #self.image_tile = None
                 
         # OS
-        self.os_zise = ""
+        self.os_size = 0
         
     def id_set(self):
         self.id = "image_" + str(uuid.uuid4())
         return self.id 
 
+
+class ImageDetailsRecurring(object):
+    '''
+    classdocs
+    '''
+
+    def __init__(self, img_dtl):
+        self.time = img_dtl.time
+        self.website_src_url = img_dtl.website_src_url
+        self.crwl = img_dtl.crwl
+        
 
 class ExtractMethodEnum(Enum):
     img_tag = 10

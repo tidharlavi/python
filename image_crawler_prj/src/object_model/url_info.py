@@ -4,6 +4,8 @@ Created on Dec 19, 2017
 @author: eliad
 '''
 
+import uuid
+
 # Local lib
 import common
 
@@ -30,12 +32,28 @@ class UrlInfo(object):
         self.initiator_id = params.get("initiator_id") # Example: for extracted should be the depth 0 link, for image should be image._id
         
         self.depth = params.get("depth")
+        if not self.depth:
+            self.depth = 0
+        
         self.depth_max = params.get("depth_max")
-        
-        self.uuid = params.get("uuid")
-        
-        self.last_crawl = params.get("last_crawl")
 
+        # If not dic, create        
+        if not hasattr(self, "crwl_dic"):
+            self.crwl_dic = dict()
+        
+        # if no crel, create
+        self.crwl_curr = params.get("crwl_curr")
+        if self.crwl_curr is None:
+            # New url, lets create a uuid
+            self.crwl_curr = "crwl_" + str(uuid.uuid4())
+
+        # update dic
+        if self.crwl_curr in self.crwl_dic:
+            self.crwl_dic[self.crwl_curr] += 1
+        else:
+            self.crwl_dic[self.crwl_curr] = 1
+            
+        self.last_crawl = params.get("last_crawl")
         
         self._id = common.UrlParser(self.url_orig).url_complete_from_parent(self.parent_url, encode=True, add_scheme=False)
         self.url = common.UrlParser(self.url_orig).url_complete_from_parent(self.parent_url)

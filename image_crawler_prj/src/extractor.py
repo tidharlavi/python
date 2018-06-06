@@ -10,7 +10,7 @@ import urllib # url parsing
 import urllib2 # Download images
 #import json # pretty dump
 import re # string parsing: extract url from style
-import uuid
+import operator
 
 from bs4 import BeautifulSoup # handle html parsing and printing
 from bs4.element import Comment
@@ -41,10 +41,14 @@ class extractor(object):
     '''
     classdocs
     '''
+    
+    DRIVER_GET_RETRY_NUM = 3
 
     def __init__(self, params = "{}"):
         self.stats = common.Stats()
         self.image_details_arr = []
+        self.internal_links = []
+        self.image_links = []
         
         if "dest_folder" in params:
             self.dest_folder = params["dest_folder"]
@@ -74,14 +78,32 @@ class extractor(object):
 
         # Selenium
         self.stats.TimeStart("_BrowserDriverTime")
-        if self.driver_headless:
-            display = Display(visible=0, size=(1920, 1080))
-            display.start()
         
-        driver = webdriver.Chrome()
-        #driver = webdriver.Firefox()
-        log.info("driver.get(%s)", url)
-        driver.get(url);
+        driver_success = False
+        for idx in range(self.DRIVER_GET_RETRY_NUM):
+            try:
+                if self.driver_headless:
+                    display = Display(visible=0, size=(1920, 1080))
+                    display.start()
+                
+                driver = webdriver.Chrome()
+                log.info("try '%d': driver.get(%s)", idx, url)
+                driver.get(url);
+                driver_success = True
+                break;
+            except:
+                log.exception("Exception during try '%d' selenium driver.get(%s).", idx, url)
+                if self.driver_headless:
+                    display.stop()
+                driver.quit()
+        
+        self.stats.Add("driver_succed_in_try", idx)
+                
+        if not driver_success:
+            log.error("Fail to driver.get(%s).", url)
+            self.stats.TimeEnd("_BrowserDriverTime")
+            self.stats.TimeEnd("_TotalTime")
+            return None
         
         self.window_size =  driver.get_window_size()
         driver.get_screenshot_as_file(self.url_time_folder + "/start_try_1920_1080_actual_"+str(self.window_size["width"])+"_"+str(self.window_size["height"])+".png")
@@ -117,6 +139,7 @@ class extractor(object):
         self.extract_images_from_style_attribute(url, driver, img_dtl_arr)
         
         # Release driver
+        display.stop()
         driver.quit()
         self.stats.TimeEnd("_BrowserDriverTime")
         
@@ -124,12 +147,14 @@ class extractor(object):
         print "extract_info(): self.download_images()"
         self.download_images(img_dtl_arr)
         
+        # Add information to images - browser area, score according to area size ..
+        print "extract_info(): self.process_images()"
+        self.process_images()
+        
         # extract information from web page: tags, keywords, title
         print "extract_info(): self.extract_website_info()"
         try:
             self.extract_website_info()
-            for img_dtl in img_dtl_arr:
-                img_dtl.website_info = self.url_info.extract_info.copy()
         except:
             log.exception("Exception during extract_website_info(), mainly for keywords extraction.")
             
@@ -143,9 +168,9 @@ class extractor(object):
         print "extract_info(): self.extract_info_from_html_tag()"
         self.extract_info_from_html_tag()
         
-        
-
         self.stats.TimeEnd("_TotalTime")    
+        
+        return True
       
 
     #
@@ -225,14 +250,14 @@ class extractor(object):
                 
                 div_style = style.get('style')
                 style_attr = cssutils.parseStyle(div_style)
-                url = style_attr['background-image']
+                background_image_url = style_attr['background-image']
                 
-                if url is None or url == 'none':
+                if background_image_url is None or background_image_url == 'none':
                     self.stats.Incr("extract_images_from_style_attribute_soup_not_valid_url")
                     continue
                 
                 urlRegex = re.compile('.*url\(\"?([^\"]*)\"?\).*')
-                m = urlRegex.match(url)
+                m = urlRegex.match(background_image_url)
                 if not m:
                     continue
                 
@@ -241,7 +266,7 @@ class extractor(object):
                 if src[-1:] == '"':
                     src = src[:-1]
                     
-                img_dtl.website_src_url = url
+                img_dtl.website_src_url = background_image_url
                 
                 img_dtl.src = src
                 
@@ -269,13 +294,13 @@ class extractor(object):
                             log.info("Found '%s' for class '%s'.", len(html_tags), tag_class)
                         
                 self.stats.Incr("extract_images_from_style_attribute_soup_url_cnt")
+                img_dtl_arr.append(img_dtl)
         except Exception:
                 log.exception("Exception during extract_images_from_style_attribute() soup handling.")
                 self.stats.Incr("exception_extract_images_from_style_attribute_soup")
         
         self.stats.TimeEnd("extract_images_from_style_attribute_soup_time")       
         
-    
     def extract_images_from_img_tag(self, url, driver, img_dtl_arr):
         images = driver.find_elements_by_tag_name('img')
         #print("'"+str(len(images))+"' images in '"+url+"'")
@@ -321,6 +346,14 @@ class extractor(object):
                 log.exception("Exception during extract_images_from_img_tag() handling. first loop.")
                 self.stats.Incr("exception_extract_images_from_img_tag")
                 
+                if self.stats.GetVal("exception_extract_images_from_img_tag") > 2:
+                    log.exception("Exception during extract_images_from_img_tag() handling. first loop. too many exceptions - break!!!")
+                    break
+                
+                
+    '''
+    Download Images functions
+    '''
     def download_images(self, img_dtl_arr):
         for img_dtl in img_dtl_arr:
             try:
@@ -343,6 +376,10 @@ class extractor(object):
                 if img_dtl.extension in ['mp4']:
                     self.stats.Incr("skip_mp4_file_extension")
                     continue
+                
+                if img_dtl.extension in ['asp']:
+                    self.stats.Incr("skip_mp4_file_extension")
+                    continue
       
                 if img_dtl.browser_width < 10 or img_dtl.browser_height < 10:
                     #print("skip_browser_size: height '"+str(img_dtl.browser_height)+"', width '"+str(img_dtl.browser_width)+"' for '"+img_dtl.src+"'.")
@@ -352,6 +389,8 @@ class extractor(object):
                 file_name = self.download_image(img_dtl)
                 if file_name is None:
                     continue
+                
+                img_dtl.crwl = self.url_info.crwl_curr
     
                 self.image_details_arr.append(img_dtl)
                 self.stats.Incr("append_image")
@@ -399,19 +438,22 @@ class extractor(object):
                 # fill img object
                 img_dtl.image_height = im.size[1]
                 img_dtl.image_width = im.size[0]
-                img_dtl.image_format = im.format
-                img_dtl.image_format_description = im.format_description
+                
+                if not img_dtl.extension:
+                    img_dtl.extension = im.format.lower()
+                
+                #img_dtl.image_format_description = im.format_description
                 #img_dtl.image_info = im.info
-                img_dtl.image_mode = im.mode
-                if hasattr(im, "text"):
-                    if isinstance(im.text, dict):
-                        img_dtl.image_text_dic = im.text.copy()
-                    else:
-                        log.info("Eliad: PIL im.text is not a dict !!!!")
+                #img_dtl.image_mode = im.mode
+                #if hasattr(im, "text"):
+                #    if isinstance(im.text, dict):
+                #        img_dtl.image_text_dic = im.text.copy()
+                #    else:
+                #        log.info("Eliad: PIL im.text is not a dict !!!!")
                 #img_dtl.image_tile = im.tile
                 
                 # check if its animated gif
-                if img_dtl.extension in ['gif'] and im.is_animated:
+                if img_dtl.extension in ['gif'] and hasattr(im, "is_animated") and im.is_animated:
                     log.info("Image is animated gif, skip it '%s'.", fileName)
                     self.stats.Incr("skip_animated_gif")
                     return None
@@ -422,9 +464,9 @@ class extractor(object):
             return None
 
         try:
-            if (img_dtl.os_size < 2500) or img_dtl.image_width < 100 or img_dtl.image_height < 100 or img_dtl.browser_width < 30 or img_dtl.browser_height < 30:
+            if (img_dtl.os_size < 1300) or img_dtl.image_width < 50 or img_dtl.image_height < 50 or img_dtl.browser_width < 45 or img_dtl.browser_height < 45:
                 self.stats.Incr("skip_irr")
-                #print("Irrelevent: '" + ', '.join("%s: %s" % item for item in vars(img_dtl).items()) + "'." )
+                log.info("Irrelevent: '" + ', '.join("%s: %s" % item for item in vars(img_dtl).items()) + "'." )
                 #print("skip_irr: os_size '"+str(img_dtl.os_size)+"', browser_height '"+str(img_dtl.browser_height)+"', browser_width '"+str(img_dtl.browser_width)+"', image_height '"+str(img_dtl.image_height)+"', image_width '"+str(img_dtl.image_width)+"' for '"+img_dtl.src+"'.")
                 
                 basename = os.path.basename(img_dtl.path)
@@ -514,6 +556,37 @@ class extractor(object):
 
         return fileName
                     
+    def process_images(self, img_dtl_arr=None):
+        
+        if img_dtl_arr is None:
+            img_dtl_arr = self.image_details_arr
+        
+        area_dic = dict()
+        
+        arr_len = len(img_dtl_arr)
+        if arr_len == 0:
+            return
+        
+        for img_dtl in img_dtl_arr:
+            img_dtl.website_images_len = arr_len
+            
+            img_dtl.browser_area = img_dtl.browser_width * img_dtl.browser_height
+            area_dic[img_dtl.id] = img_dtl.browser_area
+
+        sorted_areas = sorted(area_dic.items(), key=lambda x: x[1]) # sorted(area_dic.items(), key=operator.itemgetter(1)).reverse() # (id, area)
+        
+        sorted_area_dic = dict()
+        rank = 0
+        prev_value = sorted_areas[-1][1]
+        for img_area in reversed(sorted_areas):
+            if img_area[1] != prev_value:
+                rank = rank + 1
+            prev_value = img_area[1]
+            sorted_area_dic[img_area[0]] = rank
+                
+        for img_dtl in img_dtl_arr:
+            img_dtl.website_image_rank = sorted_area_dic[img_dtl.id] 
+              
     def extract_info_from_html_tag(self, img_dtl_arr = None, depth = 4):
         
         if img_dtl_arr is None:
@@ -547,8 +620,7 @@ class extractor(object):
                         self.stats.Incr("reached_end")
                         break
                     
-                    if img_soup_p.name == 'a' and not hasattr(img_dtl, 'link'):
-                        img_dtl.html_link = img_soup_p.get("href")
+                    if img_soup_p.name == 'a' and not img_dtl.html_link:
                         self.stats.Incr("found_link_in_" + str(i))
                         
                         href = img_soup_p.get('href')
@@ -556,7 +628,7 @@ class extractor(object):
                             continue 
                         
                         href = href.encode('utf-8')
-                
+                        
                         url_info_new = url_info.UrlInfo({
                                                            "parent_url": self.url,
                                                            "url": href,
@@ -565,11 +637,12 @@ class extractor(object):
                                                            "initiator_id": img_dtl.id,
                                                            "depth": 0,
                                                            "depth_max": 1,
-                                                           "uuid": [ "url_" + str(uuid.uuid4()) ],
+                                                           "crwl_curr": self.url_info.crwl_curr,
                                                            })
                         
                         self.image_links.append(url_info_new)
                         
+                        img_dtl.html_link = url_info_new.url
                         if "doubleclick" in img_dtl.html_link:
                             img_dtl.html_adv = image_details.AdvertisersEnum.doubleclick
                             self.stats.Incr("found_adv_" + image_details.AdvertisersEnum.doubleclick.name)

@@ -99,7 +99,9 @@ class ExtractKeywords(object):
                     print("meta name 'description' = " + desription)
                     
              
-        title = soup.title.string
+        title = ""
+        if soup.title:
+            title = soup.title.string
         print("title=" + title)
         
         return title, keywords, desription 

@@ -3,12 +3,11 @@
 import sys 
 import traceback
 
-# test 2
-
 ##################
 # Stats
 ##################
 import time # Measure execution time
+import json
 class Stats(object):
 
     def __init__(self, statsList=[]):
@@ -39,6 +38,23 @@ class Stats(object):
 
     def GetVal(self, key):
         return self.stats[key]
+    
+    def add_stats(self, stats_new, prefix=None):
+        stats_dic_new = stats_new.Get()
+        if not prefix:
+            self.stats.update(stats_dic_new)
+        else:
+            for key, value in stats_dic_new.iteritems():
+                self.Add(prefix + "_" + key, value)
+    
+    def Print(self, pretty=True):
+        stats_str = ""
+        if pretty:
+            stats_str = json.dumps(self.Get(), sort_keys=True, indent=4)
+        else:
+            stats_str = json.dumps(self.Get(), sort_keys=True)
+        
+        return stats_str
 
 
 ##################
@@ -207,7 +223,7 @@ def link_extractor_html(url_info, html_source):
                                                            "initiator_id": url,
                                                            "depth": url_info.depth + 1,
                                                            "depth_max": url_info.depth_max,
-                                                           "uuid": [ url_info.uuid ],
+                                                           "crwl_curr": url_info.crwl_curr,
                                                            })
             
             if full_url == url_info_new.url:
@@ -256,11 +272,12 @@ def ExtractDictValue(dic, param, default):
         return dic[param]
     except Exception: 
         return default
-
+    
 def to_dict(obj, classkey=None):
     if isinstance(obj, dict):
         data = {}
-        for (k, v) in obj.items():
+        for k in sorted(obj.keys()):
+            v = obj[k]
             data[k] = to_dict(v, classkey)
         return data
     elif hasattr(obj, "_ast"):
