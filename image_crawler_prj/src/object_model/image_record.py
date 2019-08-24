@@ -50,8 +50,11 @@ class ImageRecord(object):
             self.html_tag_title.append(img_dtl.html_tag_title)
         if img_dtl.html_tag_alt and img_dtl.html_tag_alt not in self.html_tag_alt:
             self.html_tag_alt.append(img_dtl.html_tag_alt)
-        if img_dtl.html_text and img_dtl.html_text not in self.html_text:
-            self.html_text.append(img_dtl.html_text)
         if img_dtl.html_link and img_dtl.html_link not in self.html_link:
             self.html_link.append(img_dtl.html_link)
+            
+        for html_text in img_dtl.html_text:
+            if html_text not in self.html_text:
+                self.html_text.append(img_dtl.html_text)
+        
         

@@ -101,10 +101,12 @@ class Loader(object):
                     found_rec["metadata"]["html_tag_title"].append(img_dtl.html_tag_title)
                 if img_dtl.html_tag_alt and img_dtl.html_tag_alt not in found_rec["metadata"]["html_tag_alt"]:
                     found_rec["metadata"]["html_tag_alt"].append(img_dtl.html_tag_alt)
-                if img_dtl.html_text and img_dtl.html_text not in found_rec["metadata"]["html_text"]:
-                    found_rec["metadata"]["html_text"].append(img_dtl.html_text)
                 if img_dtl.html_link and img_dtl.html_link not in found_rec["metadata"]["html_link"]:
                     found_rec["metadata"]["html_link"].append(img_dtl.html_link)
+                    
+                for html_text in img_dtl.html_text:
+                    if html_text not in found_rec["metadata"]["html_text"]:
+                        found_rec["metadata"]["html_text"].append(img_dtl.html_text)
                 
                 # Check if we already got this image from this url
                 found_details = False

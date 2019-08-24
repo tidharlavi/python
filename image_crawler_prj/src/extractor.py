@@ -34,6 +34,7 @@ import common
 from object_model import image_details
 from object_model import url_info
 import extract_keywords
+import config
 
 log = logging.getLogger(__name__)
 
@@ -55,7 +56,7 @@ class extractor(object):
         else:
             self.dest_folder = "/home/eliad/python/image_crawler/images_db/"
         
-        self.driver_headless = True
+        self.driver_headless = config.conf["EXTRACTOR_DRIVER_HEADLESS"]
 
     def extract_info(self, url_inf):
         self.stats.TimeStart("_TotalTime")
@@ -144,8 +145,9 @@ class extractor(object):
         self.stats.TimeEnd("_BrowserDriverTime")
         
         # Download images and add more details to img_dtl
-        print "extract_info(): self.download_images()"
-        self.download_images(img_dtl_arr)
+        if config.conf["EXTRACTOR_DOWNLOAD_IMAGES"]:
+            log.info("download_images()")
+            self.download_images(img_dtl_arr)
         
         # Add information to images - browser area, score according to area size ..
         print "extract_info(): self.process_images()"
@@ -611,10 +613,13 @@ class extractor(object):
                     #print("Error: len(img_soup_arr)=" + str(len(img_soup_arr)))
                     continue
                     
-                img_soup = img_soup_arr[0]
+                img_soup_p = img_soup_arr[0]
                 
-                img_soup_p = img_soup.parent
+                
                 for i in range(1, depth):
+                    
+                    img_soup_p = img_soup_p.parent
+                    
                     #print "depth = " + str(i) + "==="
                     if img_soup_p is None or img_soup_p.name in ["body", "html"]:
                         self.stats.Incr("reached_end")
@@ -625,7 +630,7 @@ class extractor(object):
                         
                         href = img_soup_p.get('href')
                         if (href is None) or (href in ["None",  ""] or href.startswith("javascript:") or href.startswith("#")):
-                            continue 
+                            continue    
                         
                         href = href.encode('utf-8')
                         
@@ -646,14 +651,17 @@ class extractor(object):
                         if "doubleclick" in img_dtl.html_link:
                             img_dtl.html_adv = image_details.AdvertisersEnum.doubleclick
                             self.stats.Incr("found_adv_" + image_details.AdvertisersEnum.doubleclick.name)
+                
+                texts = [text for text in img_soup_p.stripped_strings]
+                for text in texts:
+                    if len(text) > 100:
+                        text = text[0:100] + "..."
+                        
+                    if text not in img_dtl.html_text: 
+                        img_dtl.html_text.append(text)
                     
-                    text = self.text_from_soup(img_soup_p).strip()
-                    if text and not hasattr(img_dtl, 'text'):
-                        img_dtl.html_text = text
-                        self.stats.Incr("found_text_in_"+str(i))
-                        
-                    img_soup_p = img_soup_p.parent
-                        
+                
+                self.stats.Incr("found_html_text_len_"+ str(len(img_dtl.html_text)))        
                 #print(str(index) + ": " + ', '.join("%s: %s" % item for item in vars(img_dtl).items()) + "'." )
             except: 
                 log.exception("")
@@ -690,11 +698,21 @@ class extractor(object):
         return u" ".join(t.strip() for t in visible_texts)        
     
     
-    
-    
-    
-    
-    
+  
+#===============================================================================
+# if __name__ == '__main__':
+#     log.info("You running extractor file.")
+#     sys.exit(0) 
+# 
+#     url = 'https://www.nytimes.com/2009/06/28/books/review/Mallon2-t.html'
+#     
+#     ext = extractor.extractor({ "dest_folder": config.conf["OUTPUT_FOLDER"] })
+#     res = ext.extract_info(url_info)
+#     log.info("Statistics extractor: '%s'.", ext.stats.Print(pretty=False))
+#     if not res:
+#         log.info('Fail to ext.extract_info(url_info), return Task.')
+#         return
+#===============================================================================
     
     
     

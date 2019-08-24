@@ -290,7 +290,7 @@ def images_stats(img_comp_dtl_arr, comp_param, stats):
     img_comp_dtl_arr_len = len(img_comp_dtl_arr)
     size_diff_percent = ((stats.GetVal("_src_size_aggr") - stats.GetVal("_dst_size_aggr")) /  float(stats.GetVal("_src_size_aggr"))) * 100
         
-    stats.AddVal("_img_comp_dtl_arr", img_comp_dtl_arr_len)
+    stats.AddVal("_img_comp_dtl_arr", img_comp_dtl_arr_len) 
     stats.AddVal("_size_diff_percent", size_diff_percent)
 
             
@@ -324,6 +324,53 @@ if __name__ == '__main__':
                     if pil_quality == 0 and pil_resize[0] == 0 and pil_resize[1] == 0 and pil_convert_jpg == 1:
                         continue
                     if pil_quality == 0 and pil_resize[0] == 200 and pil_resize[1] == 200 and pil_convert_jpg == 0:
+                        continue
+                    if pil_quality == 0 and pil_resize[0] == 200 and pil_resize[1] == 200 and pil_convert_jpg == 1:
+                        continue
+                    if pil_quality == 0 and pil_resize[0] == 400 and pil_resize[1] == 400 and pil_convert_jpg == 0:
+                        continue
+                    if pil_quality == 0 and pil_resize[0] == 400 and pil_resize[1] == 400 and pil_convert_jpg == 1:
+                        continue
+                    if pil_quality == 0 and pil_resize[0] == 600 and pil_resize[1] == 600 and pil_convert_jpg == 0:
+                        continue
+                    if pil_quality == 0 and pil_resize[0] == 600 and pil_resize[1] == 600 and pil_convert_jpg == 1:
+                        continue
+                    
+                    if pil_quality == 50 and pil_resize[0] == 0 and pil_resize[1] == 0 and pil_convert_jpg == 0:
+                        continue
+                    if pil_quality == 50 and pil_resize[0] == 0 and pil_resize[1] == 0 and pil_convert_jpg == 1:
+                        continue
+                    if pil_quality == 50 and pil_resize[0] == 200 and pil_resize[1] == 200 and pil_convert_jpg == 0:
+                        continue
+                    if pil_quality == 50 and pil_resize[0] == 200 and pil_resize[1] == 200 and pil_convert_jpg == 1:
+                        continue
+                    if pil_quality == 50 and pil_resize[0] == 400 and pil_resize[1] == 400 and pil_convert_jpg == 0:
+                        continue
+                    if pil_quality == 50 and pil_resize[0] == 400 and pil_resize[1] == 400 and pil_convert_jpg == 1:
+                        continue
+                    if pil_quality == 50 and pil_resize[0] == 600 and pil_resize[1] == 600 and pil_convert_jpg == 0:
+                        continue
+                    if pil_quality == 50 and pil_resize[0] == 600 and pil_resize[1] == 600 and pil_convert_jpg == 1:
+                        continue
+                    
+                    if pil_quality == 70 and pil_resize[0] == 0 and pil_resize[1] == 0 and pil_convert_jpg == 0:
+                        continue
+                    if pil_quality == 70 and pil_resize[0] == 0 and pil_resize[1] == 0 and pil_convert_jpg == 1:
+                        continue
+                    if pil_quality == 70 and pil_resize[0] == 200 and pil_resize[1] == 200 and pil_convert_jpg == 0:
+                        continue
+                    if pil_quality == 70 and pil_resize[0] == 200 and pil_resize[1] == 200 and pil_convert_jpg == 1:
+                        continue
+                    if pil_quality == 70 and pil_resize[0] == 400 and pil_resize[1] == 400 and pil_convert_jpg == 0:
+                        continue
+                    if pil_quality == 70 and pil_resize[0] == 400 and pil_resize[1] == 400 and pil_convert_jpg == 1:
+                        continue
+                    if pil_quality == 70 and pil_resize[0] == 600 and pil_resize[1] == 600 and pil_convert_jpg == 0:
+                        continue
+                    if pil_quality == 70 and pil_resize[0] == 600 and pil_resize[1] == 600 and pil_convert_jpg == 1:
+                        continue
+                    
+                    if pil_quality == 70 and pil_resize[0] == 0 and pil_resize[1] == 0 and pil_convert_jpg == 0:
                         continue
                     
                     source_folder = "/home/eliad/python/image_crawler/images_sig_db/"

@@ -49,6 +49,7 @@ class Crawler(object):
         self.stats.Incr("static_page_new")
                     
         # Insert to DB
+        res = None
         url_info.last_crawl = datetime.now()
         try:
             url_info_dic = common.to_dict(url_info)
@@ -101,11 +102,14 @@ class Crawler(object):
                         self.coll_urls.update({'_id': url_info._id}, {'$inc': {crwl_dic_key: 1 }})
                     else:
                         self.stats.Incr("url_in_db_crwl_not_in_dic")
+                        self.coll_urls.update({'_id': url_info._id}, {'$set': {crwl_dic_key: 1 }})
                     
-            except Exception as e: 
-                print("Crawler.insert_urls Exception: type '",sys.exc_info()[0],"', message '",e,"'")
-                traceback.print_exc()
-                return None
+                        ###### Add url to Q - url extractor/proccessed
+                        #print("Going to extract url '"+url_info.url+"'.")
+                        task_queue.tasks.extract_load_crawl.delay(common.to_dict(url_info))
+                            
+            except:
+                log.exception("Fail to insert url '%s'.", url_info.url)
             
     def update_url_extract_info(self, extractor, url_info):
         
@@ -116,7 +120,8 @@ class Crawler(object):
             
             
             
-            
+if __name__ == '__main__':
+    log.info("You run the wrong file.")
             
             
             

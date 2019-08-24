@@ -334,15 +334,57 @@ def bs_test1(html_source):
         
     print("Statistics '"+json.dumps(stat.Get(), sort_keys=True, indent=4)+"'.")
 
+import html2text
+def bs_extract_text_test(html_source):
+    soup = BeautifulSoup(html_source, 'html.parser')
+    
+    utext = html_source.decode('utf-8')
+    
+    if False:
+        print(soup.get_text('|||'))
+    
+    if True: # Found the best solution
+        arr = [text for text in soup.stripped_strings]
+        print(arr)
+    
+    if True:
+        s = soup.find_all(text=True, recursive=False)
+        print(s)
+        print([e.strip() for e in s]) #remove space
+    
+    if True:
+        h = html2text.HTML2Text()
+        h.ignore_links = True
+        h.bypass_tables = True
+        h.ignore_images = True
+        h.ignore_links = True
+        h.ignore_emphasis = True
+        h.skip_internal_links = True
+        result = h.handle(utext)
+        
+        print "html2text result: ============================================================="
+        print(result)
+        
+        clean_result = ""
+        bad_words = ['*', '#']
+        for line in result.splitlines(True):
+            if not any(bad_word in line for bad_word in bad_words) and len(line) > 40:
+                clean_result += line
+     
+    
+
 ##### Running code
 
 #url = 'http://www.ynet.co.il/articles/0,7340,L-4809441,00.html',
 #url = 'http://www.ynet.co.il'
-url = None
+#url = None
+#url = 'https://www.nytimes.com/2009/06/28/books/review/Mallon2-t.html'
 #html_file = "/home/eliad/workspace/python.tests/html_pages/bs_test.html"
 #html_file = '/home/eliad/workspace/python.tests/html_pages/www.ynet.co.il.html'
-html_file = '/home/eliad/workspace/python.tests/html_pages/www.ynet.co.il%2Farticles%2F0%2C7340%2CL-4809441%2C00.html.txt'
+#html_file = '/home/eliad/workspace/python.tests/html_pages/www.ynet.co.il%2Farticles%2F0%2C7340%2CL-4809441%2C00.html.txt'
 #html_file = None
+html_file = "/home/eliad/workspace/python.tests/html_pages/bs_image_example.html"
+
 depth = 4
 
 html_source = None
@@ -372,13 +414,13 @@ if html_source is None and url is not None:
         with open(html_file, 'w') as html_file_handler:
             html_file_handler.write(html_source)
             
-        with open(html_file, 'r') as file:
-            html_source = file.read().decode('ascii','ignore')
+    with open(html_file, 'r') as file:
+        html_source = file.read().decode('ascii','ignore')
 
 if html_source is not None:
     #bs_test1(html_source)
-    bs_test_extract_images_from_style(html_source)
-    
+    #bs_test_extract_images_from_style(html_source)
+    bs_extract_text_test(html_source)
                 
 print("End !!!")  
         

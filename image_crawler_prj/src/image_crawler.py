@@ -15,21 +15,14 @@ import loader
 from datetime import datetime # datetime now
 import extractor
 import common
-
-
 import config
-
-c = config.Config()
-a = c.conf["CONFIG_FILE"]
-print a
-
 
 #url = "https://www.ynet.co.il/home/0,7340,L-544,00.html"
 #url = "https://www.ynet.co.il/articles/0,7340,L-5063578,00.html"
 #url = "https://www.ynet.co.il/articles/0,7340,L-5063952,00.html"
-url = "https://www.nytimes.com/"
+#url = "https://www.nytimes.com/"
 #url = "https://www.nytimes.com/2017/12/29/opinion/dont-cheer-as-the-irs-grows-weaker.html"
-
+url = 'https://www.nytimes.com/2009/06/28/books/review/Mallon2-t.html'
 
 
 ##################
@@ -73,7 +66,7 @@ if True:
                                           "initiator_id": "eliad",
                                           "depth_max": 1,
                                           })
-    crlr.insert_new_url(url_info)
+    crlr.insert_urls([ url_info ])
 
 ### Testing
 from PIL import Image

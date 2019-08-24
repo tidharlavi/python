@@ -1,0 +1,545 @@
+
+* create new ''index:
+    * delete index from Kibana ==> management
+    * 'Delete images'
+    * Create mapping: 'PUT images { ... } '
+    * Add ducuments
+    * Kibana ==> management ==> index pattern ==> create index pattern
+        * No time domain
+        * set up link - url, images
+    * Adjust dashboard/visualize to new index  
+    * in 'discover' ==> choose the correct index 
+
+======================================================================================================
+* usful commands: 
+GET /_cat/indices?v
+GET images/_mapping/image
+
+======================================================================================================
+PUT apps
+{
+  "mappings": {
+    "app": {
+      "properties": {
+        "src": {
+          "type": "text"
+        },
+        "html_link": {
+          "type": "text"
+        }
+      }
+    }
+  }
+}
+
+
+put apps/app/aaa
+{
+    "src": ["https://images1.ynet.co.il/PicServer5/2017/11/27/8180238/81802322888657183103no.jpg","https://images1.ynet.co.il/PicServer5/2017/11/27/8180238/81802322888657183103no.jpg"],
+    "html_link": ["https://images1.ynet.co.il/PicServer5/2017/11/27/8180238/81802322888657183103no.jpg","https://images1.ynet.co.il/PicServer5/2017/11/27/8180238/81802322888657183103no.jpg"]
+}        
+======================================================================================================
+
+PUT images
+{
+  "mappings": {
+    "image": {
+      "properties": {
+        "metadata": {
+          "properties": {
+            "cnt": {
+              "type": "long"
+            },
+            "details": {
+              "properties": {
+                "browser_area": {
+                  "type": "long"
+                },
+                "browser_height": {
+                  "type": "long"
+                },
+                "browser_location": {
+                  "properties": {
+                    "x": {
+                      "type": "float"
+                    },
+                    "y": {
+                      "type": "float"
+                    }
+                  }
+                },
+                "browser_location_once_scrolled_into_view": {
+                  "properties": {
+                    "x": {
+                      "type": "long"
+                    },
+                    "y": {
+                      "type": "long"
+                    }
+                  }
+                },
+                "browser_width": {
+                  "type": "long"
+                },
+                "browser_window_size": {
+                  "properties": {
+                    "height": {
+                      "type": "long"
+                    },
+                    "width": {
+                      "type": "long"
+                    }
+                  }
+                },
+                "cnt": {
+                  "type": "long"
+                },
+                "crwl": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                },
+                "download_method": {
+                  "properties": {
+                    "_name_": {
+                      "type": "text",
+                      "fields": {
+                        "keyword": {
+                          "type": "keyword",
+                          "ignore_above": 256
+                        }
+                      }
+                    },
+                    "_value_": {
+                      "type": "long"
+                    }
+                  }
+                },
+                "extension": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                },
+                "extract_method": {
+                  "properties": {
+                    "_name_": {
+                      "type": "text",
+                      "fields": {
+                        "keyword": {
+                          "type": "keyword",
+                          "ignore_above": 256
+                        }
+                      }
+                    },
+                    "_value_": {
+                      "type": "long"
+                    }
+                  }
+                },
+                "html_adv": {
+                  "properties": {
+                    "_name_": {
+                      "type": "text",
+                      "fields": {
+                        "keyword": {
+                          "type": "keyword",
+                          "ignore_above": 256
+                        }
+                      }
+                    },
+                    "_value_": {
+                      "type": "long"
+                    }
+                  }
+                },
+                "html_link": {
+                  "type": "text"
+                },
+                "html_tag_alt": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                },
+                "html_tag_height": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                },
+                "html_tag_id": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                },
+                "html_tag_title": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                },
+                "html_tag_width": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                },
+                "html_text": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                },
+                "id": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                },
+                "image_height": {
+                  "type": "long"
+                },
+                "image_width": {
+                  "type": "long"
+                },
+                "os_size": {
+                  "type": "long"
+                },
+                "path": {
+                  "type": "text"
+                },
+                "path_sig_db": {
+                  "type": "text"
+                },
+                "recurring": {
+                  "properties": {
+                    "crwl": {
+                      "type": "text",
+                      "fields": {
+                        "keyword": {
+                          "type": "keyword",
+                          "ignore_above": 256
+                        }
+                      }
+                    },
+                    "time": {
+                      "type": "date"
+                    },
+                    "website_src_url": {
+                      "type": "text"
+                    }
+                  }
+                },
+                "recurring_cnt": {
+                  "type": "long"
+                },
+                "src": {
+                  "type": "text"
+                },
+                "time": {
+                  "type": "date"
+                },
+                "ver": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                },
+                "website_domain": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                },
+                "website_image_rank": {
+                  "type": "long"
+                },
+                "website_images_len": {
+                  "type": "long"
+                },
+                "website_src_url": {
+                  "type": "text"
+                }
+              }
+            },
+            "details_cnt": {
+              "type": "long"
+            },
+            "html_tag_alt": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "html_tag_title": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "html_text": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "path_sig_db": {
+              "type": "text"
+            },
+            "src": {
+              "type": "text"
+            },
+            "html_link": {
+              "type": "text"
+            }
+          }
+        },
+        "path": {
+          "type": "text"
+        },
+        "signature": {
+          "type": "long"
+        },
+        "simple_word_0": {
+          "type": "long"
+        },
+        "simple_word_1": {
+          "type": "long"
+        },
+        "simple_word_10": {
+          "type": "long"
+        },
+        "simple_word_11": {
+          "type": "long"
+        },
+        "simple_word_12": {
+          "type": "long"
+        },
+        "simple_word_13": {
+          "type": "long"
+        },
+        "simple_word_14": {
+          "type": "long"
+        },
+        "simple_word_15": {
+          "type": "long"
+        },
+        "simple_word_16": {
+          "type": "long"
+        },
+        "simple_word_17": {
+          "type": "long"
+        },
+        "simple_word_18": {
+          "type": "long"
+        },
+        "simple_word_19": {
+          "type": "long"
+        },
+        "simple_word_2": {
+          "type": "long"
+        },
+        "simple_word_20": {
+          "type": "long"
+        },
+        "simple_word_21": {
+          "type": "long"
+        },
+        "simple_word_22": {
+          "type": "long"
+        },
+        "simple_word_23": {
+          "type": "long"
+        },
+        "simple_word_24": {
+          "type": "long"
+        },
+        "simple_word_25": {
+          "type": "long"
+        },
+        "simple_word_26": {
+          "type": "long"
+        },
+        "simple_word_27": {
+          "type": "long"
+        },
+        "simple_word_28": {
+          "type": "long"
+        },
+        "simple_word_29": {
+          "type": "long"
+        },
+        "simple_word_3": {
+          "type": "long"
+        },
+        "simple_word_30": {
+          "type": "long"
+        },
+        "simple_word_31": {
+          "type": "long"
+        },
+        "simple_word_32": {
+          "type": "long"
+        },
+        "simple_word_33": {
+          "type": "long"
+        },
+        "simple_word_34": {
+          "type": "long"
+        },
+        "simple_word_35": {
+          "type": "long"
+        },
+        "simple_word_36": {
+          "type": "long"
+        },
+        "simple_word_37": {
+          "type": "long"
+        },
+        "simple_word_38": {
+          "type": "long"
+        },
+        "simple_word_39": {
+          "type": "long"
+        },
+        "simple_word_4": {
+          "type": "long"
+        },
+        "simple_word_40": {
+          "type": "long"
+        },
+        "simple_word_41": {
+          "type": "long"
+        },
+        "simple_word_42": {
+          "type": "long"
+        },
+        "simple_word_43": {
+          "type": "long"
+        },
+        "simple_word_44": {
+          "type": "long"
+        },
+        "simple_word_45": {
+          "type": "long"
+        },
+        "simple_word_46": {
+          "type": "long"
+        },
+        "simple_word_47": {
+          "type": "long"
+        },
+        "simple_word_48": {
+          "type": "long"
+        },
+        "simple_word_49": {
+          "type": "long"
+        },
+        "simple_word_5": {
+          "type": "long"
+        },
+        "simple_word_50": {
+          "type": "long"
+        },
+        "simple_word_51": {
+          "type": "long"
+        },
+        "simple_word_52": {
+          "type": "long"
+        },
+        "simple_word_53": {
+          "type": "long"
+        },
+        "simple_word_54": {
+          "type": "long"
+        },
+        "simple_word_55": {
+          "type": "long"
+        },
+        "simple_word_56": {
+          "type": "long"
+        },
+        "simple_word_57": {
+          "type": "long"
+        },
+        "simple_word_58": {
+          "type": "long"
+        },
+        "simple_word_59": {
+          "type": "long"
+        },
+        "simple_word_6": {
+          "type": "long"
+        },
+        "simple_word_60": {
+          "type": "long"
+        },
+        "simple_word_61": {
+          "type": "long"
+        },
+        "simple_word_62": {
+          "type": "long"
+        },
+        "simple_word_7": {
+          "type": "long"
+        },
+        "simple_word_8": {
+          "type": "long"
+        },
+        "simple_word_9": {
+          "type": "long"
+        },
+        "timestamp": {
+          "type": "date"
+        }
+      }
+    }
+  }
+}
+
+

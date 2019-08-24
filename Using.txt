@@ -1,0 +1,214 @@
+
+
+* grep Exception celery.log | grep -vE "from an empty|KeyError| to DB|raised unex|first loop|Stale"
+
+* ps aux | sort -rn -k 5,6
+
+* viewer /home/eliad/python/image_crawler/images_db/ynet.co.il/www.ynet.co.il%2Farticles%2F0%2C7340%2CL-5151504%2C00.html/2018_03_09-17/images/jdel362i-image.jpeg
+
+Python Code ===============================================================================
+
+
+
+image_crawler ===============================================================================
+
+* run:
+    * cd ~/git/python/image_crawler_prj/src/; celery -A task_queue worker -l info -f ~/python/image_crawler/logs/celery.log
+    * cd ~/git/bash; ./log_sys_info.sh 
+    * cd ~/git/bash; ./log_ps_info.sh &
+    * cd ~/git/python/image_crawler_prj/src/; python image_crawler.py
+    * sync run:
+        * set ask_always_eager=True
+    * debug:
+        * cd ~/Applications/robo3/bin ; ./robo3t &
+        * cd ~/git/python/image_crawler_prj/src/; celery -A task_queue flower &
+        * cd ~/python/image_crawler/logs; tail -f celery.log
+        * cd ~/python/image_crawler/logs; tail -f sys_info.log
+        * open kibana: http://localhost:5601    
+        * open flower for celery monitor: http://localhost:5555/dashboard
+        * rmq mgmt: http://localhost:15672/#/
+        * sudo service mongod status
+        * sudo systemctl status elasticsearch.serviced
+        
+    
+* Delete All:
+    * cd /home/eliad/git/bash; ./remove_all_data.sh
+    * Perform:
+        * rm -fr ~/python/image_crawler/images_sig_db/*
+        * rm -fr ~/python/image_crawler/images_db/*
+        * rm -fr ~/python/image_crawler/logs/*
+        * sudo service mongod start ==> start mongodb
+        * cd /home/eliad/git/python/image_crawler_prj/src; celery -A task_queue purge ==> delete all tasks from celery/rmq:
+        * cd ~/Applications/robo3/bin ; ./robo3t & ==> open 3T ==> right click on DB ==> drop DB
+        * from ES dev tool: DELETE /images
+    
+
+
+Git: ========================================================================================
+* eclipse plugin - http://www.eclipse.org/egit/download/, https://wiki.eclipse.org/EGit/FAQ#What_versions_of_Eclipse_does_EGit_target.3F
+* https://github.com/tidharlavi/python.git
+* Commands:
+    * 
+    
+* commit:
+    * Username for 'https://github.com': ==> tidharlavi
+    * Password for 'https://tidharlavi@github.com': ==> ????????3 
+
+
+Python Articles ===============================================================================
+* http://newspaper.readthedocs.io/en/latest/index.html
+* python3.5
+    * import newspaper
+    * from newspaper import Article
+    * url = 'https://www.ynet.co.il/articles/0,7340,L-5064059,00.html'
+    * a = Article(url, language='he') # Chinese
+    * a.download()
+    * a.parse()
+    * a.title
+    * a.nlp()
+    * a.keywords
+    *
+
+
+Eclipse ===============================================================================
+* http://www.pydev.org/manual_adv_keybindings.html
+* create project with git:
+    * create project not in workspace: file -> new -> pydev project -> un-select "use default" 
+    * import/copy existing files/folders to project folder: right click on project -> import -> general -> file system
+* key binding:
+    * Ctrl + / - comment
+    * Ctrl + 4 - Add Comment Block 
+    * Ctrl + - - collappse all
+    * Ctrl + R - run to line during debug
+    * find ==> f3,f2
+    * "python got to definition" ==> f12
+    * delete line ==> Ctrl+L
+    * next editor ==> Ctrl+Tab
+    * find file ==> Ctrl+Shift+R
+    * find class, var ... ==> Ctrl+Shift+T
+    * history - Alt+Left
+    * find all references ==> Shift+F12
+    * referance in workspace ==> F12
+    * undo - Ctrk + z
+    * redo - Ctrl + y
+    * debugging:
+        * resume - F5
+        * step in - F11
+        * step over - F10
+        * 
+* colors:
+    * comments ==> purple
+
+
+Celery ==============================================================================
+* http://docs.celeryproject.org/en/latest/getting-started/first-steps-with-celery.html
+
+* run
+	* cd /home/eliad/git/python/image_crawler_prj/src; celery -A task_queue worker -l info
+	* celery -A task_queue worker -l info
+	* for single worker add: -c 1
+* all tasks from celery/rmq: cd /home/eliad/git/python/image_crawler/src; celery -A task_queue purge
+* debug celery:
+	* celery -A task_queue inspect active
+	* celery -A task_queue control enable_events
+	* celery -A task_queue events --dump
+	* celery -A task_queue status
+	* /home/eliad/git/python/image_crawler_prj/src; celery -A task_queue flower
+* debug rmq - https://www.rabbitmq.com/rabbitmqctl.8.html:
+    * rabbitmqctl list_queues name messages messages_ready messages_unacknowledged
+* flower:
+    * http://localhost:5555/dashboard
+
+
+rabbitmq ==============================================================================
+
+* To start the server: sudo rabbitmq-server
+* Start managment plugin: rabbitmq-plugins enable rabbitmq_management
+    * http://localhost:15672/
+        * user: guest
+        * pass: guestd
+
+
+
+
+Elastic search  version 6.0.0, kibbana ver 6.0.0 ===============================================================================
+Insdtall: https://www.elastic.co/guide/en/elasticsearch/reference/current/deb.html
+* elasticsearch logs: ls /var/data/elasticsearch
+* sudo systemctl status elasticsearch.service
+* sudo systemctl start elasticsearch.service
+                                                                                                                                                                                
+
+* get general params:
+    * curl -XGET 'localhost:9200'
+* Get all indexes:
+    * curl 'localhost:9200/_cat/indices?v' 
+    * GET /_cat/indices?v
+* get mappings:
+    * GET images/_mapping/image
+* curl -XGET 'localhost:9200/images/_search?search_type=scan&scroll=10m&size=50&pretty=1' -d '{ "query" : { "match_all" : {} } }'
+* curl -XGET 'localhost:9200/_search?pretty' -H 'Content-Type: application/json' -d' { "query": { "match_all": {} } }'
+* curl -XGET 'localhost:9200/images/_search?pretty' -H 'Content-Type: application/json' -d' { "query": { "match_all": {} } }'
+
+*  
+
+Install Kibana: https://www.elastic.co/guide/en/kibana/current/deb.html
+* sudo systemctl start kibana.service
+* sudo systemctl stop kibana.service
+* access kibana: localhost:5601
+
+* kibbana discover:
+    * metadata.details.image_width: >2000
+    * 
+    
+* logstsh
+    * sudo cat /etc/logstash/startup.options
+    * /usr/share/logstash/bin/logstash -e 'input { stdin { } } output { stdout {} }'
+    
+
+
+selenium ======================================================================================
+* https://christopher.su/2015/selenium-chromedriver-ubuntu/
+
+sudo mv -f geckodriver /usr/local/share/geckodriver
+sudo ln -s /usr/local/share/geckodriver /usr/local/bin/geckodriver
+sudo ln -s /usr/local/share/geckodriver /usr/bin/geckodriver
+
+
+
+
+MomgoDB =======================================================================================
+* https://docs.mongodb.com/manual/tutorial/install-mongodb-on-ubuntu/
+* http://api.mongodb.com/python/current/installation.html
+	* python -m pip install pymongo
+* robo3 ide - with fix https://github.com/Studio3T/robomongo/issues/1384
+    * cd ~/Applications/robo3/bin ; ./robo3t
+
+* files location
+	* /var/lib/mongodb - data files
+	* /var/log/mongodb 0 log files
+	* /etc/mongod.conf - conf file (systemLog.path and storage.dbPath)
+* terminal commands:
+	* sudo service mongod start/stop/restart
+	* cat /var/log/mongodb/mongod.log
+	* mongo --host 127.0.0.1:27017
+	* pip freeze | grep pymongo ==> pymongo==3.6.0
+* queries in 3T:
+    * press ctrl+enter to run query  
+    * db.getCollection('urls').find({ "_id": { $regex: /.*spider.*/i} })
+    * db.getCollection('urls').find({}).count() - count all url in collection
+
+* mongo cli commands:
+	*
+
+Bash create logs ========================================================================================
+
+grep Worker-1 celery.log > worker-1.log
+grep Worker-2 celery.log > worker-2.log
+grep Worker-3 celery.log > worker-3.log
+grep Worker-4 celery.log > worker-4.log
+
+grep MainProcess celery.log > main.log
+
+grep -vEi "Worker-|MainProcess" celery.log > celery_clean.log
+
+

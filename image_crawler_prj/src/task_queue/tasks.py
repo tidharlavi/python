@@ -22,6 +22,7 @@ import crawler
 # locals
 import object_model
 import common
+import config
 
 # Crawler stats
 from elasticsearch import Elasticsearch
@@ -45,9 +46,7 @@ def extract_load_crawl(url_info_dic):
     
     ldr =  loader.Loader()
 
-    ext = extractor.extractor({
-                               "dest_folder": "/home/eliad/python/image_crawler/images_db"
-    })
+    ext = extractor.extractor({ "dest_folder": config.conf["OUTPUT_FOLDER"] })
     
     celery_log.info('Going to ext.extract_info(url_info)')
     res = ext.extract_info(url_info)

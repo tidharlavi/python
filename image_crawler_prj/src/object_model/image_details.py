@@ -51,7 +51,7 @@ class ImageDetails(object):
         self.html_tag_title = ""
         
         # HTML (surrounding image)
-        self.html_text = ""
+        self.html_text = []
         self.html_link = ""
 
         self.html_adv = AdvertisersEnum.none

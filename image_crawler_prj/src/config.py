@@ -9,19 +9,21 @@ import argparse
 import json
 from bson.json_util import default
 
+# https://hackernoon.com/4-ways-to-manage-the-configuration-in-python-4623049e841b
 
 config_default = {
     "CONFIG_FILE": "/home/eliad/git/python/image_crawler_prj/src/config.json",
+    "OUTPUT_FOLDER": "/home/eliad/python/image_crawler/images_db",
+    
+    "EXTRACTOR_DRIVER_HEADLESS": True,
+    "EXTRACTOR_DOWNLOAD_IMAGES": True
+    
 }
 
 config_dev = {
-    "TEST_TMP_DIR": "tests",
-    "TEST_TIMEOUT": 20
 }
 
 config_prod = {
-    "SERVICE": "travis-ci",
-    "HOOK_URL": "web-hooking-url-from-ci-service"
 }
 
 
@@ -51,4 +53,8 @@ class Config:
         for key, value in conf_add.iteritems():
             self.conf[key] = value
         
-        
+
+# Running code
+conf = Config().conf
+
+

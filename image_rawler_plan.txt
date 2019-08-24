@@ -1,0 +1,345 @@
+
+NYT numbers:
+* depth 1: 319 links, 2774 new images
+* depth 2: 1000 links, 2845 new images
+* depth 3: 5523 links, 14034 new images
+
+* use lib from common in exper
+
+* get all info from ES ==> run rake on 
+    * how many images have html_text/html_tag_alt/html_tag_title ? what is the len ?
+    * analyze phrase like: via, for, by, credits
+
+* how to create image key words from:
+    * html_text
+    * html_tag_alt   ==> dont have anything
+    * html_tag_title ==> dont have anything
+    * If article, check if its main images 
+    
+    *** Image proccessing: 
+        * check if there is face, check if there is a pepole 
+        * check for objects
+    
+    
+
+    * image analyze using opencv, AWS ...
+    * google description
+    * page keywords
+    * link keywords
+    * alt
+    * ....
+
+* how to decide if its article ?
+    * count text len 
+    * author 
+    * creation date     
+
+
+* page key word, info:
+    * is it article ? main domain ? category page ?
+    * if article:
+        * extract: metadata, keywords ?, extract text,  extract and mark main images, date, author ...
+    
+    
+
+Must start collecting NYT on my laptop few days each day once:
+* low percentage of link, text, title ... ==> add to dashboard the stats
+
+* api to search image on:
+    * input: image local path, image stream ?, image url
+    * output: list of matches
+    * how to display those images ?
+* tool that get a local path and 
+
+Sould be for start collecting NYT:
+* good keyword calc
+* background images
+* embeeded images
+
+Must for real site:
+* search google for keyword ==> retrive images, load to our DB, extract info from the links
+
+problmes:
+* not getting information from taboole - not finding element in driver ==> background images
+* Why i see all selenuim prints in the console ?!?!?!?!?!?!?!?!?
+* too many ES prints in file
+* check is image links are searched ==> if adding the information from the extracted to the url ==> update_metadata
+* embbeded images
+* file too long name
+* some images appear twice -- why alg didnt match them ?
+* match different images - mostly buildings
+
+tasks:
+* process articale page:
+    * extract text
+    * extract and mark main images
+    * date
+    * author
+    * all that supported in API
+    * http://www.cortical.io/extract-keywords.html
+* identify index pages
+* python utility / API to return results from image search - by image and by keyword
+d
+Measure exposure:
+    * how many time appear in index pages ? 
+    * how many time appear in regular pages ?
+    * how long it appear ?
+    * where it appears in the page ? side/middle ? top/bottom ? in view ? size in compare to other images in the page
+    ==> meausre how many links point to each page ==> indexes will have a lot of links
+    * 
+Estimate effect:
+
+Example:
+    * image as main page/artical image
+    * image with link to articale - not as main appear ? times, during period of ?
+
+
+
+* fix mecanizem of crawling - 
+    * what is the general concept ?
+        * start crawle from url with depth ==> crawle have unique id
+        * during the crawl checking the guid to verify same url wasnt visited before (count number of times this url was visited, for expousre understanding)
+    * when to crawl again ?
+        * once a week crawle all the site, 3 times a day crawle only depth 2-3  
+    * how to handle static, dynamic -   pages ?
+    * I want to crawle indexs but not articles again ?
+    * what about pages with different query param on the same page ?
+    
+    * recrawle pages:
+        1. index page Add information to ES - images are not main articale image
+        2. Main articale page:
+            * found in image link from index
+            * does the link image is also the 
+        3. recommandation inside the site
+        4. advertisment
+        5. Taboola, outbrain - content recommandation
+        
+
+* check if image src is the same, maybe create image src dic
+* if same src increase match propability
+* check ES match by comparing image src 
+* indication how much image in view, how much user need to scroll to it
+
+*** Make a site crawl perfectly:
+    * dont crawle image_link of image_link of image_link .....
+    * crawle statistics:    
+        * how much time it takes to crawle a page/site ?
+        * does it end ? how much time it takes ?
+    * try to minimize the saved data details_cnt, details.cnt
+    * skip 'tel://www.nytimes.com+971-442-289-457'
+    * not downloading backgroud images 
+    * not dowloading embbeded images
+    * imag_link already creawled with regular crawle ?
+
+    
+* RUN SYSTEM:
+    * run twice and check what happen to duplicate images vs new images
+    * run search on images in DB
+    * run search on new images
+    
+   
+* dashboard:
+    * display table with doc information on top 10 details_cnt
+    * how many have alt
+    * how many have title
+  "download_method": {
+    "_value_": 10,* how to create image key words from:
+    * image analyze using opencv, AWS ...
+    * google description
+    * page keywords
+    * link keywords
+    * alt
+    * ....
+    "_name_": "src_url"
+  },
+  "html_adv": {
+    "_value_": 900,
+    "_name_": "none"
+  },
+  "extract_method": {
+    "_value_": 10,
+    "_name_": "img_tag"
+  },
+
+    
+
+Minor:
+* disaply images in kibbana from a local folder https://discuss.elastic.co/t/has-anyone-modified-kibana-code-to-display-images-or-documents/59221
+* image_record not contain array of src ==> what happen to display ? need to change mapping ?
+* insert signature and simple_word to a dic
+* only crawler create id for crawle and url ? crawler only handle url_info
+* display keys sorted in kibbana - https://github.com/elastic/elasticsearch-py/issues/68
+* fix loader:
+    * all access to ES-DB from him
+    * keep 'images db name and doc type in the self
+    * few tasks update same img_dtl togther, it will cause a problem since they all take the doc from ES change it and write it back ==> we can add lock per ES entry
+* cant find images from background url
+* fix embbeded images
+* finilize irr and skip images - http://my.walla.co.il/
+* some file names are too long
+* better way to find background images than go over all elements - maybe grep ?, find better way to download style background images - grep on the html (search for the tag)?
+* check if more than 1 record have distance zero
+* tile and info are extracted - serialize, es insert problem
+* encoding problems with hebrew - on keyward extract
+* extract_images_from_style_attribute url regex fixes - finilize
+* add image type in html img_tag, style_attribute
+* google embeeded image are not downloaded
+* how to handle url redirect with link-DB
+* runnig validation at program start:
+    * check mongodb is up
+    * celery is up
+    * es is up
+* create object for image metadata
+* when downloading image we dont use query string in the name (when saving it to the image_db)
+ 
+  
+Meduim:
+* how to deal with images src 'https://gts-nytimes.akamaized.net/Images/v1.0/NYT.Images.svc/getImage?width=298&imageURL=http%3A%2F%2Fnpgimages.gabriels.net%2FNYTimes_RE%2FPhotos_Processed%2F12436-OLRS-102605%5E1.jpg&compressionRate=80&bypassGlobalProxy=true'
+* convert dict (from mongo or ES) to object
+* Update main record params in loader should be done in object function
+* what to do with animation gif ? save first image in the DB ?
+* update url_info (description, title, keywords) in DB from extractor
+* handle filename in extractor better - like in irr - handle '?' ...
+* extract_info_from_html_tag work only on img_tag image extracted
+* add more advertisers: appnxs, google, outbrain .... - like ad blocker
+* url-redirect should also be key ? entry ? pointer ?
+* when getting image from style background-url get all the information from selenium driver. how to get from soup the driver-browser information
+    * look for id in soup ==> get elem from selenuim by id
+        * find_element_by_id
+    * look for class ==> search same url in style using selenuim
+        * find_elements_by_css_selector
+
+
+Large:
+* 
+* create script to transer index to another
+* What about video ? is this image from a video ? does it intiate a video
+* ES stats show only the first in the image_details array
+* run ynet - hebrew
+* decide where and how to calc keywords for the img
+    * Need to be inserted to ES ==> need to be when updating ES
+    * When image link ==> after extractor ==> updating
+    * call function that:
+        * check image alt, text, page keywords - only if its the page main image
+* fix logging:
+    * celery - prod - remote:
+        * print to file - per worker
+        * all to file, error to stdout
+    * dev - local:
+        * print to file per worker all
+        * print error, exception to console
+    * remove elastic search prints
+* create different prod/dev env by changing few parameters ==> configuration file ==> docker ?
+* try to decide who own/create this image
+* decide a set of conditions- image is important enofgh to search it in google and add the infomration to the image
+    * also to do feature extraction on the image
+* Decide if image is the main artical image
+* compare extractor output of webpage in different crawles
+* check if image visible
+* when saving image to image_db we are not really checking if it exist in image_db_sig - 
+    *query string might give different images (we can ignore it). might be different images with same name but different paths, since we are taking only basename.
+* skip images with the same path on the same page ( maybe count how mant time they are on the page)
+* handle search from the user - image uplaod or url:
+    * diagnose links: geolocation, traffic on those sites, keywords from this sites ...
+* AWS alexa, similar web - traffic https://www.quora.com/What-are-the-best-alternatives-to-Alexa-com
+    * popularity - global rank, us rank
+    * audiance geography 
+    * monthly unique visitors
+* extract some alexa, similarweb info for main pages i use, create DB for it:
+    * mongo, db = domain, coll = domain info
+    * id = domain
+    * popularity - global rank, us rank
+    * audiance geography 
+    * monthly unique visitors
+* AWS or other image recognition objects to extract keywords
+* evaluate image rank:
+    * evaluate the site rank and location - display on map
+    * rank of hte image affected ny the distance from the main page
+    * if the image is main article image ==> take keywords from the page
+* insert image, search it and fail to get it
+* Q of tasks:
+	* features: priority, insert/extract time
+* schedualer to insert main pages (main and category) to queue 
+* build website + api to visualize outputs ==> maybe kibbanne can replace some of it
+* page to display images:
+	* search by tag
+	* display all relevant images, with min information
+	* if select image display all information
+	* where the image appear on the globe
+* design crud, api for the website
+* way to debug if extractor work fine:
+	* folder of output images
+	* list of information extracted on each image
+* check external API keywords extarction services:
+    * http://www.cortical.io/extract-keywords.html
+* how to create image key words from:
+    * image analyze using opencv, AWS ...
+    * google description
+    * page keywords
+    * link keywords
+    * alt
+    * ....
+	
+infrastracture:
+* logging:
+    * https://stackoverflow.com/questions/25447869/logging-using-elasticsearch-py
+* create a git repository
+* reports
+	* emails
+	* events - sql ?
+	* summary reports 
+* how to report on errors, exceptions
+* configuration:
+    * conf file - json - image_crawler_conf.json
+    * class that holds default, costume config and read conf file
+    * config.py, expose config dict with all the configuration
+    * validate configuration
+    * create prod, dev configuration
+    * create class config insted of dict ?
+    * DB location
+    * run locally or with tasks
+
+Future:
+* create image downloader with scrapy - https://doc.scrapy.org/en/latest/topics/media-pipeline.html
+* proxey to download images in one stage
+* compare driver to beutiful soap on text
+* debug env:
+	* local page that load fast and have all the types of images
+	* loading to dev DBs
+* connect to image sites and display thier suggestions
+
+
+Think:
+* production DB and staging DB
+* what if the gsearch images is not excact images
+* how to connect image link page with the image ? 
+* do we have more images except img tag and style url
+* where and why save html file ? what to do with url we keep crawle ? do we keep it with date ?
+* we can divide to tasks the driver operation and the image download operation
+* get more info on image only if we see it few times
+* do we have more links beside 'a' tags ? in crawling, dont extract only 'a' tags for extracted_links also find the onclick binding ?
+* compare beutifulsoup image  find: soup.findAll(style=re.compile("background-image")), soup.findAll('img') to what selenuim find
+* how to handle category pages
+
+
+Knowladge:
+* rotate and change images to check if the get the same score
+
+learn:
+* elastic search
+* selenuim
+* calary - tasks
+* image comparing, search, signature
+* python - json - dic - class - db - object convertion
+* go over scrapy architecture
+
+
+assumptions:
+* taboola str is in image src
+* doubleclick is in the link
+
+
+
+
+
+
